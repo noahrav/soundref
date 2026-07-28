@@ -1,5 +1,6 @@
 import type { BoardItem } from '../model/item/BoardItem';
 import { StickyNoteItem } from '../model/item/StickyNoteItem';
+import { TextItem } from '../model/item/TextItem';
 import { Position } from '../model/Position';
 import { Project } from '../model/Project';
 import { ViewportState } from '../model/ViewportState';
@@ -25,6 +26,9 @@ export interface ProjectDataJSON {
 			type: string;
 			position: { x: number; y: number };
 			content?: string;
+			scale?: number;
+			width?: number;
+			color?: string;
 		}>;
 	}>;
 }
@@ -135,19 +139,26 @@ export class ProjectStorage {
 					},
 				},
 				items: Array.from(ws.items.values()).map((item) => {
-					const isSticky =
-						item instanceof StickyNoteItem ||
-						(item as any).type === 'StickyNoteItem' ||
-						'content' in item;
-					const itemObj: any = {
-						id: item.id,
-						type: 'StickyNoteItem',
-						position: { x: item.position.x, y: item.position.y },
-					};
-					if (isSticky) {
-						itemObj.content = (item as any).content || '';
+					if (item instanceof TextItem || (item as any).type === 'TextItem') {
+						const textItem = item as TextItem;
+						return {
+							id: textItem.id,
+							type: 'TextItem',
+							position: { x: textItem.position.x, y: textItem.position.y },
+							content: textItem.content || '',
+							scale: textItem.scale || 1,
+							width: textItem.width,
+						};
 					}
-					return itemObj;
+					const sticky = item as StickyNoteItem;
+					return {
+						id: sticky.id,
+						type: 'StickyNoteItem',
+						position: { x: sticky.position.x, y: sticky.position.y },
+						content: sticky.content || '',
+						scale: sticky.scale || 1,
+						color: sticky.color || 'yellow',
+					};
 				}),
 			}),
 		);
@@ -174,17 +185,22 @@ export class ProjectStorage {
 							itemJson.position?.y || 0,
 						);
 						let item: BoardItem;
-						if (
-							itemJson.type === 'StickyNoteItem' ||
-							itemJson.content !== undefined
-						) {
+						if (itemJson.type === 'TextItem') {
+							item = new TextItem(
+								pos,
+								itemJson.content || '',
+								itemJson.id,
+								itemJson.scale || 1,
+								itemJson.width,
+							);
+						} else {
 							item = new StickyNoteItem(
 								pos,
 								itemJson.content || '',
 								itemJson.id,
+								itemJson.scale || 1,
+								itemJson.color || 'yellow',
 							);
-						} else {
-							item = new StickyNoteItem(pos, '', itemJson.id);
 						}
 						itemsMap.set(item.id, item);
 					});

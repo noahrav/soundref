@@ -4,9 +4,11 @@ import { type Editor, PageRecordType, type TLShapeId, Tldraw } from 'tldraw';
 import 'tldraw/tldraw.css';
 import { ProjectService } from '../../api/ProjectService';
 import type { StickyNoteItem } from '../../core/model/item/StickyNoteItem';
+import { TextItem } from '../../core/model/item/TextItem';
 import './board.scss';
 import { BoardToolbar } from './components/BoardToolbar';
 import { PageTabs } from './components/PageTabs';
+import { customShapeUtils } from './config/customShapes';
 import { uiComponents } from './config/ui-components';
 import { uiOverrides } from './config/ui-overrides';
 import { fromRichText, toRichText } from './utils/richText';
@@ -88,18 +90,38 @@ export default function Board({
 								items.forEach((item) => {
 									const shapeId = `shape:${item.id}` as TLShapeId;
 									if (!editor.getShape(shapeId)) {
-										const stickyItem = item as StickyNoteItem;
-										const noteContent = stickyItem.content || '';
-										editor.createShape({
-											id: shapeId,
-											type: 'note',
-											x: item.position.x,
-											y: item.position.y,
-											props: {
-												color: 'yellow',
-												richText: toRichText(noteContent),
-											},
-										});
+										if (
+											item instanceof TextItem ||
+											(item as any).type === 'TextItem'
+										) {
+											const textItem = item as TextItem;
+											editor.createShape({
+												id: shapeId,
+												type: 'text',
+												x: item.position.x,
+												y: item.position.y,
+												props: {
+													richText: toRichText(textItem.content || ''),
+													scale: textItem.scale || 1,
+													w: textItem.width || 200,
+													autoSize: !textItem.width,
+												},
+											});
+										} else {
+											const stickyItem = item as StickyNoteItem;
+											const noteContent = stickyItem.content || '';
+											editor.createShape({
+												id: shapeId,
+												type: 'note',
+												x: item.position.x,
+												y: item.position.y,
+												props: {
+													color: (stickyItem.color || 'yellow') as any,
+													richText: toRichText(noteContent),
+													scale: stickyItem.scale || 1,
+												},
+											});
+										}
 									}
 								});
 							} catch (e) {
@@ -147,9 +169,13 @@ export default function Board({
 
 								const itemsToSync: Array<{
 									id: string;
+									type: string;
 									x: number;
 									y: number;
 									content: string;
+									scale?: number;
+									width?: number;
+									color?: string;
 								}> = [];
 								pageShapes.forEach((shape) => {
 									if (shape.type === 'note') {
@@ -157,9 +183,24 @@ export default function Board({
 										const content = extractNoteContent(shape.props);
 										itemsToSync.push({
 											id: cleanId,
+											type: 'StickyNoteItem',
 											x: shape.x,
 											y: shape.y,
 											content,
+											scale: (shape.props as any)?.scale || 1,
+											color: (shape.props as any)?.color || 'yellow',
+										});
+									} else if (shape.type === 'text') {
+										const cleanId = shape.id.replace(/^shape:/, '');
+										const content = extractNoteContent(shape.props);
+										itemsToSync.push({
+											id: cleanId,
+											type: 'TextItem',
+											x: shape.x,
+											y: shape.y,
+											content,
+											scale: (shape.props as any)?.scale || 1,
+											width: (shape.props as any)?.w,
 										});
 									}
 								});
@@ -286,6 +327,7 @@ export default function Board({
 				autoFocus
 				colorScheme="system"
 				locale={i18n.language}
+				shapeUtils={customShapeUtils}
 				components={uiComponents}
 				overrides={uiOverrides}
 				onMount={handleMount}

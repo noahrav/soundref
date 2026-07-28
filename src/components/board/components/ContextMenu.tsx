@@ -1,6 +1,7 @@
 import type { IconDefinition } from '@fortawesome/free-solid-svg-icons';
 import {
 	faChevronRight,
+	faFont,
 	faNoteSticky,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -55,6 +56,51 @@ export const CustomContextMenu = track(function CustomContextMenu({
 	const selectedIds = editor.getSelectedShapeIds();
 	const hasSelection = selectedIds.length > 0;
 
+	const handlePasteContent = useCallback(async () => {
+		try {
+			const text = await navigator.clipboard.readText();
+			if (text) {
+				let isTldrawJson = false;
+				try {
+					const parsed = JSON.parse(text);
+					if (
+						parsed &&
+						typeof parsed === 'object' &&
+						('tldraw' in parsed || 'shapes' in parsed)
+					) {
+						isTldrawJson = true;
+					}
+				} catch {
+					isTldrawJson = false;
+				}
+
+				if (!isTldrawJson) {
+					const targetScreenPoint = menu || {
+						x: window.innerWidth / 2,
+						y: window.innerHeight / 2,
+					};
+					const point = editor.screenToPage(targetScreenPoint);
+					const newId = createShapeId();
+					editor.createShape({
+						id: newId,
+						type: 'text',
+						x: point.x - 100,
+						y: point.y - 20,
+						props: {
+							richText: toRichText(text),
+							autoSize: true,
+						},
+					});
+					editor.select(newId);
+					return;
+				}
+			}
+		} catch (e) {
+			console.warn('[ContextMenu] Clipboard read fallback to tldraw paste:', e);
+		}
+		actions.paste?.onSelect('context-menu');
+	}, [actions, editor, menu]);
+
 	const selectionGroups: MenuGroupDef[] = hasSelection
 		? [
 				{
@@ -76,7 +122,7 @@ export const CustomContextMenu = track(function CustomContextMenu({
 							id: 'paste',
 							label: t('contextMenu.paste'),
 							shortcut: '⌘V',
-							onSelect: () => actions.paste?.onSelect('context-menu'),
+							onSelect: handlePasteContent,
 						},
 						{
 							id: 'duplicate',
@@ -141,6 +187,32 @@ export const CustomContextMenu = track(function CustomContextMenu({
 							onSelect: () => {},
 							submenu: [
 								{
+									id: 'add-text-item',
+									label: t('board.textItem'),
+									icon: faFont,
+									onSelect: () => {
+										if (menu) {
+											const point = editor.screenToPage({
+												x: menu.x,
+												y: menu.y,
+											});
+											const newId = createShapeId();
+											editor.createShape({
+												id: newId,
+												type: 'text',
+												x: point.x - 100,
+												y: point.y - 20,
+												props: {
+													richText: toRichText(''),
+													autoSize: true,
+												},
+											});
+											editor.select(newId);
+											editor.setEditingShape(newId);
+										}
+									},
+								},
+								{
 									id: 'add-sticky-note',
 									label: t('board.stickyNote'),
 									icon: faNoteSticky,
@@ -172,7 +244,7 @@ export const CustomContextMenu = track(function CustomContextMenu({
 							id: 'paste',
 							label: t('contextMenu.paste'),
 							shortcut: '⌘V',
-							onSelect: () => actions.paste?.onSelect('context-menu'),
+							onSelect: handlePasteContent,
 						},
 						{
 							id: 'select-all',

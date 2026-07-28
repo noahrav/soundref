@@ -1,6 +1,7 @@
 import {
 	faArrowPointer,
 	faChevronDown,
+	faFont,
 	faHand,
 	faNoteSticky,
 	faPlus,
@@ -32,6 +33,27 @@ export const BoardToolbar = track(function BoardToolbar() {
 			props: {
 				color: 'yellow',
 				richText: toRichText(''),
+			},
+		});
+
+		editor.select(newId);
+		editor.setEditingShape(newId);
+		setShowAddMenu(false);
+	}, [editor]);
+
+	const handleAddTextItem = useCallback(() => {
+		const viewportBounds = editor.getViewportPageBounds();
+		const center = viewportBounds.center;
+		const newId = createShapeId();
+
+		editor.createShape({
+			id: newId,
+			type: 'text',
+			x: center.x - 100,
+			y: center.y - 20,
+			props: {
+				richText: toRichText(''),
+				autoSize: true,
 			},
 		});
 
@@ -102,6 +124,14 @@ export const BoardToolbar = track(function BoardToolbar() {
 
 				{showAddMenu && (
 					<div className="board-toolbar__dropdown">
+						<button
+							type="button"
+							className="board-toolbar__dropdown-item"
+							onClick={handleAddTextItem}
+						>
+							<FontAwesomeIcon icon={faFont} />
+							<span>{t('board.textItem')}</span>
+						</button>
 						<button
 							type="button"
 							className="board-toolbar__dropdown-item"

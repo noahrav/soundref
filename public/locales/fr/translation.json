@@ -45,6 +45,7 @@
 		"handToolTitle": "Panoramique / Déplacer (H)",
 		"add": "Ajouter",
 		"addTitle": "Ajouter un élément",
+		"textItem": "Texte",
 		"stickyNote": "Post-it",
 		"addPage": "Ajouter une page",
 		"closePage": "Fermer {{name}}"

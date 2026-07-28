@@ -44,6 +44,7 @@
 		"handToolTitle": "Pan / Move (H)",
 		"add": "Add",
 		"addTitle": "Add item",
+		"textItem": "Text",
 		"stickyNote": "Post-it",
 		"addPage": "Add page",
 		"closePage": "Close {{name}}"

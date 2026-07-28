@@ -4,6 +4,7 @@ import { CreateItemCommand } from '../core/command/workspace/CreateItemCommand';
 import { DeleteItemCommand } from '../core/command/workspace/DeleteItemCommand';
 import type { BoardItem } from '../core/model/item/BoardItem';
 import { StickyNoteItem } from '../core/model/item/StickyNoteItem';
+import { TextItem } from '../core/model/item/TextItem';
 import { Position } from '../core/model/Position';
 import { Project } from '../core/model/Project';
 import type { Workspace } from '../core/model/Workspace';
@@ -206,9 +207,13 @@ export class ProjectService {
 		workspaceId: string,
 		itemsPayload: Array<{
 			id: string;
+			type?: string;
 			x: number;
 			y: number;
 			content?: string;
+			scale?: number;
+			width?: number;
+			color?: string;
 		}>,
 	): Promise<void> {
 		const cleanWsId = this.stripPagePrefix(workspaceId);
@@ -221,7 +226,18 @@ export class ProjectService {
 		const newItemsMap = new Map<string, BoardItem>();
 		itemsPayload.forEach((p) => {
 			const pos = new Position(p.x, p.y);
-			const item = new StickyNoteItem(pos, p.content || '', p.id);
+			let item: BoardItem;
+			if (p.type === 'TextItem' || p.type === 'text') {
+				item = new TextItem(pos, p.content || '', p.id, p.scale || 1, p.width);
+			} else {
+				item = new StickyNoteItem(
+					pos,
+					p.content || '',
+					p.id,
+					p.scale || 1,
+					p.color || 'yellow',
+				);
+			}
 			newItemsMap.set(item.id, item);
 		});
 
@@ -237,6 +253,9 @@ export class ProjectService {
 			positionX: number;
 			positionY: number;
 			content?: string;
+			scale?: number;
+			width?: number;
+			color?: string;
 		},
 	): Promise<BoardItem> {
 		const cleanWsId = this.stripPagePrefix(workspaceId);
@@ -247,7 +266,24 @@ export class ProjectService {
 		if (!ws) throw new Error(`Workspace ${workspaceId} not found`);
 
 		const pos = new Position(itemPayload.positionX, itemPayload.positionY);
-		const item = new StickyNoteItem(pos, itemPayload.content || '');
+		let item: BoardItem;
+		if (itemPayload.type === 'TextItem' || itemPayload.type === 'text') {
+			item = new TextItem(
+				pos,
+				itemPayload.content || '',
+				undefined,
+				itemPayload.scale || 1,
+				itemPayload.width,
+			);
+		} else {
+			item = new StickyNoteItem(
+				pos,
+				itemPayload.content || '',
+				undefined,
+				itemPayload.scale || 1,
+				itemPayload.color || 'yellow',
+			);
+		}
 
 		const cmd = new CreateItemCommand(ws, item);
 		cmd.execute();
