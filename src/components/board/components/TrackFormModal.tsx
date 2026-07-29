@@ -14,6 +14,7 @@ import {
 	getBlobUrlForFile,
 	getLocalMediaUrl,
 } from '../../../core/utils/mediaUtils';
+import { getOrExtractWaveformPeaks } from '../../../core/utils/WaveformService';
 import { fetchCoverArt } from '../utils/embedUtils';
 import './TrackFormModal.scss';
 
@@ -118,6 +119,7 @@ export function TrackFormModal({
 
 				const audio = new Audio(src);
 				audio.crossOrigin = 'anonymous';
+				audio.preload = 'metadata';
 				audio.addEventListener('loadedmetadata', () => {
 					if (!isMounted) return;
 					if (audio.duration && !isNaN(audio.duration)) {
@@ -144,6 +146,7 @@ export function TrackFormModal({
 						const blobUrl = await getBlobUrlForFile(audioSource);
 						if (blobUrl) {
 							const fallbackAudio = new Audio(blobUrl);
+							fallbackAudio.preload = 'metadata';
 							fallbackAudio.addEventListener('loadedmetadata', () => {
 								if (
 									isMounted &&
@@ -157,61 +160,14 @@ export function TrackFormModal({
 					}
 				});
 
-				// Extract Peaks
-				let arrayBuffer: ArrayBuffer | null = null;
-				try {
-					const res = await fetch(src);
-					if (res.ok) arrayBuffer = await res.arrayBuffer();
-				} catch {
-					// Fetch failed
-				}
-
-				if (!arrayBuffer && DesktopBridge.isTauri()) {
-					arrayBuffer = await DesktopBridge.readFileBinary(audioSource);
-				}
-
-				if (arrayBuffer && isMounted) {
-					try {
-						const audioCtx = new (
-							window.AudioContext || (window as any).webkitAudioContext
-						)();
-						const audioBuf = await audioCtx.decodeAudioData(arrayBuffer);
-						const rawData = audioBuf.getChannelData(0);
-						const samples = 100;
-						const blockSize = Math.floor(rawData.length / samples);
-						const step = Math.max(1, Math.floor(blockSize / 50));
-						const peaks: number[] = [];
-						for (let i = 0; i < samples; i++) {
-							let sum = 0;
-							let count = 0;
-							const blockStart = i * blockSize;
-							for (let j = 0; j < blockSize; j += step) {
-								sum += Math.abs(rawData[blockStart + j]);
-								count++;
-							}
-							peaks.push(count > 0 ? sum / count : 0);
-						}
-						const max = Math.max(...peaks) || 1;
-						if (isMounted) setWaveformPeaks(peaks.map((p) => p / max));
-						audioCtx.close();
-					} catch {
+				// Dynamic non-blocking peak extraction
+				getOrExtractWaveformPeaks(audioSource, src, audioSource, 100).then(
+					(peaks) => {
 						if (isMounted) {
-							setWaveformPeaks(
-								Array.from(
-									{ length: 100 },
-									(_, i) => Math.sin(i * 0.2) * 0.4 + 0.5,
-								),
-							);
+							setWaveformPeaks(peaks);
 						}
-					}
-				} else if (isMounted) {
-					setWaveformPeaks(
-						Array.from(
-							{ length: 100 },
-							(_, i) => Math.sin(i * 0.2) * 0.4 + 0.5,
-						),
-					);
-				}
+					},
+				);
 			};
 
 			loadAudioMetadata();

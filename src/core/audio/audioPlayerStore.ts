@@ -1,6 +1,7 @@
 import type { LoopRegion } from '../model/item/TrackItem';
 import { DesktopBridge } from '../persistence/DesktopBridge';
 import { getBlobUrlForFile, getLocalMediaUrl } from '../utils/mediaUtils';
+import { getOrExtractWaveformPeaks } from '../utils/WaveformService';
 
 export interface PlayingTrackData {
 	id: string;
@@ -325,53 +326,10 @@ class AudioPlayerStore {
 	): void {
 		if (this.audioPeaksMap.has(trackId)) return;
 
-		setTimeout(async () => {
-			try {
-				let arrayBuffer: ArrayBuffer | null = null;
-				try {
-					const response = await fetch(src);
-					if (response.ok) {
-						arrayBuffer = await response.arrayBuffer();
-					}
-				} catch {
-					// Fetch failed
-				}
-
-				if (!arrayBuffer && DesktopBridge.isTauri()) {
-					arrayBuffer = await DesktopBridge.readFileBinary(path);
-				}
-
-				if (!arrayBuffer) return;
-				if (arrayBuffer.byteLength > 150_000_000) return;
-
-				const AudioContextClass =
-					window.AudioContext || (window as any).webkitAudioContext;
-				const audioCtx = new AudioContextClass();
-				const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-				const rawData = audioBuffer.getChannelData(0);
-				const samples = 100;
-				const blockSize = Math.floor(rawData.length / samples);
-				const step = Math.max(1, Math.floor(blockSize / 50));
-				const peaks: number[] = [];
-				for (let i = 0; i < samples; i++) {
-					let sum = 0;
-					let count = 0;
-					const blockStart = i * blockSize;
-					for (let j = 0; j < blockSize; j += step) {
-						sum += Math.abs(rawData[blockStart + j]);
-						count++;
-					}
-					peaks.push(count > 0 ? sum / count : 0);
-				}
-				const max = Math.max(...peaks) || 1;
-				const normalized = peaks.map((p) => p / max);
-				this.audioPeaksMap.set(trackId, normalized);
-				this.notify();
-				audioCtx.close();
-			} catch (err) {
-				console.warn('[AudioPlayer] Could not extract waveform peaks:', err);
-			}
-		}, 500);
+		getOrExtractWaveformPeaks(trackId, src, path, 100).then((peaks) => {
+			this.audioPeaksMap.set(trackId, peaks);
+			this.notify();
+		});
 	}
 }
 
