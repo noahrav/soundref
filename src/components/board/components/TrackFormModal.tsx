@@ -1,0 +1,636 @@
+import {
+	faFolderOpen,
+	faImage,
+	faMusic,
+	faRepeat,
+	faTimes,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { LoopRegion } from '../../../core/model/item/TrackItem';
+import { DesktopBridge } from '../../../core/persistence/DesktopBridge';
+import {
+	getBlobUrlForFile,
+	getLocalMediaUrl,
+} from '../../../core/utils/mediaUtils';
+import { fetchCoverArt } from '../utils/embedUtils';
+import './TrackFormModal.scss';
+
+export interface TrackFormData {
+	title: string;
+	imageUrl: string;
+	audioSource: string;
+	sourceType: 'local' | 'stream';
+	playMode: 'oneshot' | 'loop';
+	loopRegion: LoopRegion;
+}
+
+interface TrackFormModalProps {
+	isOpen: boolean;
+	initialData?: Partial<TrackFormData>;
+	onSave: (data: TrackFormData) => void;
+	onClose: () => void;
+}
+
+export function TrackFormModal({
+	isOpen,
+	initialData,
+	onSave,
+	onClose,
+}: TrackFormModalProps) {
+	const { t } = useTranslation();
+	const [title, setTitle] = useState(initialData?.title || '');
+	const [imageUrl, setImageUrl] = useState(initialData?.imageUrl || '');
+	const [audioSource, setAudioSource] = useState(
+		initialData?.audioSource || '',
+	);
+	const [sourceType, setSourceType] = useState<'local' | 'stream'>(
+		initialData?.sourceType || 'local',
+	);
+	const [playMode, setPlayMode] = useState<'oneshot' | 'loop'>(
+		initialData?.playMode || 'oneshot',
+	);
+	const [loopRegion, setLoopRegion] = useState<LoopRegion>(
+		initialData?.loopRegion || { start: 0, end: 10 },
+	);
+	const [audioDuration, setAudioDuration] = useState<number>(30);
+	const [waveformPeaks, setWaveformPeaks] = useState<number[]>([]);
+	const [activeDragHandle, setActiveDragHandle] = useState<
+		'start' | 'end' | null
+	>(null);
+
+	const canvasRef = useRef<HTMLCanvasElement>(null);
+	const imageInputRef = useRef<HTMLInputElement>(null);
+	const audioInputRef = useRef<HTMLInputElement>(null);
+
+	useEffect(() => {
+		if (isOpen) {
+			setTitle(initialData?.title || '');
+			setImageUrl(initialData?.imageUrl || '');
+			setAudioSource(initialData?.audioSource || '');
+			setSourceType(initialData?.sourceType || 'local');
+			setPlayMode(initialData?.playMode || 'oneshot');
+			setLoopRegion(initialData?.loopRegion || { start: 0, end: 10 });
+		}
+	}, [isOpen, initialData]);
+
+	// Auto-fetch cover art for stream URLs
+	useEffect(() => {
+		if (sourceType === 'stream' && audioSource) {
+			fetchCoverArt(audioSource).then((cover) => {
+				if (cover) setImageUrl(cover);
+			});
+		}
+	}, [sourceType, audioSource]);
+
+	// Extract duration and waveform peaks for local audio files
+	useEffect(() => {
+		if (sourceType === 'local' && audioSource) {
+			let isMounted = true;
+
+			const loadAudioMetadata = async () => {
+				let src = getLocalMediaUrl(audioSource);
+
+				if (
+					!DesktopBridge.isTauri() &&
+					!src.startsWith('http://') &&
+					!src.startsWith('https://') &&
+					!src.startsWith('blob:') &&
+					!src.startsWith('data:')
+				) {
+					const blobUrl = await getBlobUrlForFile(audioSource);
+					if (blobUrl) src = blobUrl;
+				}
+
+				const audio = new Audio(src);
+				audio.crossOrigin = 'anonymous';
+				audio.addEventListener('loadedmetadata', () => {
+					if (!isMounted) return;
+					if (audio.duration && !isNaN(audio.duration)) {
+						setAudioDuration(audio.duration);
+						if (loopRegion.end === 0 || loopRegion.end > audio.duration) {
+							setLoopRegion((prev) => ({
+								...prev,
+								end: Math.floor(audio.duration),
+							}));
+						}
+					}
+				});
+
+				audio.addEventListener('error', async () => {
+					if (!isMounted) return;
+					if (!src.startsWith('blob:') && DesktopBridge.isTauri()) {
+						const blobUrl = await getBlobUrlForFile(audioSource);
+						if (blobUrl) {
+							const fallbackAudio = new Audio(blobUrl);
+							fallbackAudio.addEventListener('loadedmetadata', () => {
+								if (
+									isMounted &&
+									fallbackAudio.duration &&
+									!isNaN(fallbackAudio.duration)
+								) {
+									setAudioDuration(fallbackAudio.duration);
+								}
+							});
+						}
+					}
+				});
+
+				// Extract Peaks
+				let arrayBuffer: ArrayBuffer | null = null;
+				try {
+					const res = await fetch(src);
+					if (res.ok) arrayBuffer = await res.arrayBuffer();
+				} catch {
+					// Fetch failed
+				}
+
+				if (!arrayBuffer && DesktopBridge.isTauri()) {
+					arrayBuffer = await DesktopBridge.readFileBinary(audioSource);
+				}
+
+				if (arrayBuffer && isMounted) {
+					try {
+						const audioCtx = new (
+							window.AudioContext || (window as any).webkitAudioContext
+						)();
+						const audioBuf = await audioCtx.decodeAudioData(arrayBuffer);
+						const rawData = audioBuf.getChannelData(0);
+						const samples = 100;
+						const blockSize = Math.floor(rawData.length / samples);
+						const step = Math.max(1, Math.floor(blockSize / 50));
+						const peaks: number[] = [];
+						for (let i = 0; i < samples; i++) {
+							let sum = 0;
+							let count = 0;
+							const blockStart = i * blockSize;
+							for (let j = 0; j < blockSize; j += step) {
+								sum += Math.abs(rawData[blockStart + j]);
+								count++;
+							}
+							peaks.push(count > 0 ? sum / count : 0);
+						}
+						const max = Math.max(...peaks) || 1;
+						if (isMounted) setWaveformPeaks(peaks.map((p) => p / max));
+						audioCtx.close();
+					} catch {
+						if (isMounted) {
+							setWaveformPeaks(
+								Array.from(
+									{ length: 100 },
+									(_, i) => Math.sin(i * 0.2) * 0.4 + 0.5,
+								),
+							);
+						}
+					}
+				} else if (isMounted) {
+					setWaveformPeaks(
+						Array.from(
+							{ length: 100 },
+							(_, i) => Math.sin(i * 0.2) * 0.4 + 0.5,
+						),
+					);
+				}
+			};
+
+			loadAudioMetadata();
+
+			return () => {
+				isMounted = false;
+			};
+		}
+	}, [sourceType, audioSource]);
+
+	// Draw loop region waveform canvas
+	useEffect(() => {
+		const canvas = canvasRef.current;
+		if (!canvas || playMode !== 'loop') return;
+		const ctx = canvas.getContext('2d');
+		if (!ctx) return;
+
+		const width = canvas.width;
+		const height = canvas.height;
+		ctx.clearRect(0, 0, width, height);
+
+		const peaks =
+			waveformPeaks.length > 0
+				? waveformPeaks
+				: Array.from({ length: 100 }, (_, i) => Math.sin(i * 0.2) * 0.4 + 0.5);
+
+		const maxDur = audioDuration || 30;
+		const startRatio = Math.max(0, loopRegion.start / maxDur);
+		const endRatio = Math.min(1, loopRegion.end / maxDur);
+
+		const startX = width * startRatio;
+		const endX = width * endRatio;
+
+		// Draw unselected background peaks
+		const barWidth = width / peaks.length;
+		peaks.forEach((peak, i) => {
+			const barHeight = peak * (height * 0.7);
+			const x = i * barWidth;
+			const y = (height - barHeight) / 2;
+			ctx.fillStyle = '#666666';
+			ctx.fillRect(x, y, Math.max(1, barWidth - 1), barHeight);
+		});
+
+		// Draw highlighted loop region
+		ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+		ctx.fillRect(startX, 0, endX - startX, height);
+
+		peaks.forEach((peak, i) => {
+			const x = i * barWidth;
+			if (x >= startX && x <= endX) {
+				const barHeight = peak * (height * 0.7);
+				const y = (height - barHeight) / 2;
+				ctx.fillStyle = '#ffffff';
+				ctx.fillRect(x, y, Math.max(1, barWidth - 1), barHeight);
+			}
+		});
+
+		// Draw start and end handles
+		ctx.fillStyle = '#ffffff';
+		ctx.fillRect(startX - 3, 0, 6, height);
+		ctx.fillRect(endX - 3, 0, 6, height);
+
+		ctx.fillStyle = '#111111';
+		ctx.fillRect(startX - 1, 0, 2, height);
+		ctx.fillRect(endX - 1, 0, 2, height);
+	}, [playMode, loopRegion, waveformPeaks, audioDuration]);
+
+	// Draggable handles logic on canvas
+	const handleCanvasPointerDown = (
+		e: React.PointerEvent<HTMLCanvasElement>,
+	) => {
+		const canvas = canvasRef.current;
+		if (!canvas) return;
+		const rect = canvas.getBoundingClientRect();
+		const clickX = e.clientX - rect.left;
+		const ratio = Math.max(0, Math.min(1, clickX / rect.width));
+		const maxDur = audioDuration || 30;
+		const targetTime = Math.round(ratio * maxDur * 100) / 100;
+
+		const startRatio = loopRegion.start / maxDur;
+		const endRatio = loopRegion.end / maxDur;
+
+		const distStart = Math.abs(ratio - startRatio);
+		const distEnd = Math.abs(ratio - endRatio);
+
+		if (distStart < distEnd) {
+			setActiveDragHandle('start');
+			setLoopRegion((prev) => ({
+				...prev,
+				start: Math.min(targetTime, Math.max(0, prev.end - 0.01)),
+			}));
+		} else {
+			setActiveDragHandle('end');
+			setLoopRegion((prev) => ({
+				...prev,
+				end: Math.max(targetTime, prev.start + 0.01),
+			}));
+		}
+	};
+
+	const handleCanvasPointerMove = (
+		e: React.PointerEvent<HTMLCanvasElement>,
+	) => {
+		if (!activeDragHandle) return;
+		const canvas = canvasRef.current;
+		if (!canvas) return;
+		const rect = canvas.getBoundingClientRect();
+		const clickX = e.clientX - rect.left;
+		const ratio = Math.max(0, Math.min(1, clickX / rect.width));
+		const maxDur = audioDuration || 30;
+		const targetTime = Math.round(ratio * maxDur * 100) / 100;
+
+		if (activeDragHandle === 'start') {
+			setLoopRegion((prev) => ({
+				...prev,
+				start: Math.min(targetTime, Math.max(0, prev.end - 0.01)),
+			}));
+		} else {
+			setLoopRegion((prev) => ({
+				...prev,
+				end: Math.max(targetTime, prev.start + 0.01),
+			}));
+		}
+	};
+
+	const handleCanvasPointerUp = () => {
+		setActiveDragHandle(null);
+	};
+
+	if (!isOpen) return null;
+
+	const handleImageFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0];
+		if (file) {
+			const filePath = (file as any).path;
+			if (filePath) {
+				setImageUrl(filePath);
+			} else {
+				const reader = new FileReader();
+				reader.onload = (evt) => {
+					if (evt.target?.result) setImageUrl(evt.target.result as string);
+				};
+				reader.readAsDataURL(file);
+			}
+			if (!title) {
+				setTitle(file.name.replace(/\.[^/.]+$/, ''));
+			}
+		}
+	};
+
+	const handleAudioFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0];
+		if (file) {
+			const filePath = (file as any).path;
+			if (filePath) {
+				setAudioSource(filePath);
+			} else {
+				const reader = new FileReader();
+				reader.onload = (evt) => {
+					if (evt.target?.result) setAudioSource(evt.target.result as string);
+				};
+				reader.readAsDataURL(file);
+			}
+			if (!title) {
+				setTitle(file.name.replace(/\.[^/.]+$/, ''));
+			}
+		}
+	};
+
+	const handlePickAudio = async () => {
+		if (DesktopBridge.isTauri()) {
+			const picked = await DesktopBridge.pickAudioFile();
+			if (picked) {
+				setAudioSource(picked);
+				if (!title) {
+					const fileName = picked
+						.split(/[/\\]/)
+						.pop()
+						?.replace(/\.[^/.]+$/, '');
+					if (fileName) setTitle(fileName);
+				}
+				return;
+			}
+		}
+		audioInputRef.current?.click();
+	};
+
+	const handlePickImage = async () => {
+		if (DesktopBridge.isTauri()) {
+			const picked = await DesktopBridge.pickImageFile();
+			if (picked) {
+				setImageUrl(picked);
+				if (!title) {
+					const fileName = picked
+						.split(/[/\\]/)
+						.pop()
+						?.replace(/\.[^/.]+$/, '');
+					if (fileName) setTitle(fileName);
+				}
+				return;
+			}
+		}
+		imageInputRef.current?.click();
+	};
+
+	const handleSubmit = (e: React.FormEvent) => {
+		e.preventDefault();
+		onSave({
+			title: title.trim() || t('trackForm.defaultTitle'),
+			imageUrl,
+			audioSource,
+			sourceType,
+			playMode,
+			loopRegion,
+		});
+		onClose();
+	};
+
+	return (
+		<div className="track-modal-backdrop" onClick={onClose}>
+			<div className="track-modal" onClick={(e) => e.stopPropagation()}>
+				<div className="track-modal__header">
+					<h3>
+						{initialData?.title
+							? t('trackForm.editTitle')
+							: t('trackForm.createTitle')}
+					</h3>
+					<button
+						type="button"
+						className="track-modal__close-btn"
+						onClick={onClose}
+					>
+						<FontAwesomeIcon icon={faTimes} />
+					</button>
+				</div>
+
+				<form onSubmit={handleSubmit} className="track-modal__form">
+					{/* Title */}
+					<div className="track-modal__field">
+						<label htmlFor="track-title">{t('trackForm.titleLabel')}</label>
+						<input
+							id="track-title"
+							type="text"
+							value={title}
+							onChange={(e) => setTitle(e.target.value)}
+							placeholder={t('trackForm.titlePlaceholder')}
+							autoFocus
+						/>
+					</div>
+
+					{/* Cover Image */}
+					<div className="track-modal__field">
+						<label htmlFor="track-image">{t('trackForm.coverLabel')}</label>
+						<div className="track-modal__input-with-btn">
+							<input
+								id="track-image"
+								type="text"
+								value={imageUrl}
+								onChange={(e) => setImageUrl(e.target.value)}
+								placeholder={t('trackForm.coverPlaceholder')}
+							/>
+							<button
+								type="button"
+								onClick={handlePickImage}
+								className="track-modal__browse-btn"
+								title={t('trackForm.browse')}
+							>
+								<FontAwesomeIcon icon={faImage} />
+							</button>
+							<input
+								ref={imageInputRef}
+								type="file"
+								accept="image/png, image/jpeg, image/jpg, image/webp, .png, .jpg, .jpeg, .webp, image/*"
+								style={{ display: 'none' }}
+								onChange={handleImageFileSelect}
+							/>
+						</div>
+					</div>
+
+					{/* Source Type Toggle */}
+					<div className="track-modal__field">
+						<label>{t('trackForm.sourceTypeLabel')}</label>
+						<div className="track-modal__toggle-group">
+							<button
+								type="button"
+								className={`track-modal__toggle-btn ${sourceType === 'local' ? 'track-modal__toggle-btn--active' : ''}`}
+								onClick={() => setSourceType('local')}
+							>
+								<FontAwesomeIcon icon={faFolderOpen} />
+								<span>{t('trackForm.localFile')}</span>
+							</button>
+							<button
+								type="button"
+								className={`track-modal__toggle-btn ${sourceType === 'stream' ? 'track-modal__toggle-btn--active' : ''}`}
+								onClick={() => setSourceType('stream')}
+							>
+								<FontAwesomeIcon icon={faMusic} />
+								<span>{t('trackForm.streamLink')}</span>
+							</button>
+						</div>
+					</div>
+
+					{/* Audio Source Input */}
+					<div className="track-modal__field">
+						<label htmlFor="track-audio">
+							{sourceType === 'local'
+								? t('trackForm.audioFileLabel')
+								: t('trackForm.streamUrlLabel')}
+						</label>
+						<div className="track-modal__input-with-btn">
+							<input
+								id="track-audio"
+								type="text"
+								value={audioSource}
+								onChange={(e) => setAudioSource(e.target.value)}
+								placeholder={
+									sourceType === 'local'
+										? t('trackForm.audioFilePlaceholder')
+										: t('trackForm.streamUrlPlaceholder')
+								}
+							/>
+							{sourceType === 'local' && (
+								<button
+									type="button"
+									onClick={handlePickAudio}
+									className="track-modal__browse-btn"
+									title={t('trackForm.browse')}
+								>
+									<FontAwesomeIcon icon={faFolderOpen} />
+								</button>
+							)}
+							<input
+								ref={audioInputRef}
+								type="file"
+								accept="audio/*, .mp3, .wav, .flac, .ogg, .m4a, .aac"
+								style={{ display: 'none' }}
+								onChange={handleAudioFileSelect}
+							/>
+						</div>
+					</div>
+
+					{/* Play Mode Toggle */}
+					<div className="track-modal__field">
+						<label>{t('trackForm.playModeLabel')}</label>
+						<div className="track-modal__toggle-group">
+							<button
+								type="button"
+								className={`track-modal__toggle-btn ${playMode === 'oneshot' ? 'track-modal__toggle-btn--active' : ''}`}
+								onClick={() => setPlayMode('oneshot')}
+							>
+								<span>{t('trackForm.oneshot')}</span>
+							</button>
+							<button
+								type="button"
+								className={`track-modal__toggle-btn ${playMode === 'loop' ? 'track-modal__toggle-btn--active' : ''}`}
+								onClick={() => setPlayMode('loop')}
+							>
+								<FontAwesomeIcon icon={faRepeat} />
+								<span>{t('trackForm.loop')}</span>
+							</button>
+						</div>
+					</div>
+
+					{/* Loop Region Selection Widget */}
+					{playMode === 'loop' && (
+						<div className="track-modal__loop-widget">
+							<label>{t('trackForm.loopRegionLabel')}</label>
+
+							<div className="track-modal__canvas-wrapper">
+								<canvas
+									ref={canvasRef}
+									width={400}
+									height={60}
+									className="track-modal__waveform-canvas"
+									onPointerDown={handleCanvasPointerDown}
+									onPointerMove={handleCanvasPointerMove}
+									onPointerUp={handleCanvasPointerUp}
+									style={{ cursor: 'ew-resize', touchAction: 'none' }}
+								/>
+							</div>
+
+							<div className="track-modal__range-inputs">
+								<div className="track-modal__range-field">
+									<span>{t('trackForm.startSec')}</span>
+									<input
+										type="number"
+										min={0}
+										max={loopRegion.end - 0.01}
+										step="any"
+										value={loopRegion.start}
+										onChange={(e) =>
+											setLoopRegion((prev) => ({
+												...prev,
+												start: Math.max(0, parseFloat(e.target.value) || 0),
+											}))
+										}
+									/>
+								</div>
+
+								<div className="track-modal__range-field">
+									<span>{t('trackForm.endSec')}</span>
+									<input
+										type="number"
+										min={loopRegion.start + 0.01}
+										max={audioDuration || 300}
+										step="any"
+										value={loopRegion.end}
+										onChange={(e) =>
+											setLoopRegion((prev) => ({
+												...prev,
+												end: Math.max(
+													prev.start + 0.01,
+													parseFloat(e.target.value) || prev.start + 0.1,
+												),
+											}))
+										}
+									/>
+								</div>
+							</div>
+						</div>
+					)}
+
+					<div className="track-modal__footer">
+						<button
+							type="button"
+							className="track-modal__btn track-modal__btn--cancel"
+							onClick={onClose}
+						>
+							{t('projectSelector.cancel')}
+						</button>
+						<button
+							type="submit"
+							className="track-modal__btn track-modal__btn--submit"
+						>
+							{t('projectSelector.create')}
+						</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	);
+}

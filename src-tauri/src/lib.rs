@@ -39,13 +39,38 @@ fn get_projects_registry_path(app: tauri::AppHandle) -> Result<String, String> {
     Ok(file.to_string_lossy().into_owned())
 }
 
+#[tauri::command]
+fn pick_audio_file() -> Option<String> {
+    let file = rfd::FileDialog::new()
+        .add_filter("Audio Files", &["mp3", "wav", "flac", "ogg", "m4a", "aac"])
+        .pick_file()?;
+    Some(file.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+fn pick_image_file() -> Option<String> {
+    let file = rfd::FileDialog::new()
+        .add_filter("Image Files", &["png", "jpg", "jpeg", "webp", "gif", "svg"])
+        .pick_file()?;
+    Some(file.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+fn read_file_binary(path: String) -> Result<tauri::ipc::Response, String> {
+    let bytes = fs::read(&path).map_err(|e| e.to_string())?;
+    Ok(tauri::ipc::Response::new(bytes))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             pick_folder,
+            pick_audio_file,
+            pick_image_file,
             read_text_file,
+            read_file_binary,
             write_text_file,
             create_dir,
             file_exists,

@@ -31,6 +31,48 @@ export class DesktopBridge {
 		return null;
 	}
 
+	public static async pickAudioFile(): Promise<string | null> {
+		if (DesktopBridge.isTauri()) {
+			try {
+				return await invoke<string | null>('pick_audio_file');
+			} catch (err) {
+				console.error('[DesktopBridge] pick_audio_file error:', err);
+				return null;
+			}
+		}
+		return null;
+	}
+
+	public static async pickImageFile(): Promise<string | null> {
+		if (DesktopBridge.isTauri()) {
+			try {
+				return await invoke<string | null>('pick_image_file');
+			} catch (err) {
+				console.error('[DesktopBridge] pick_image_file error:', err);
+				return null;
+			}
+		}
+		return null;
+	}
+
+	public static async readFileBinary(
+		path: string,
+	): Promise<ArrayBuffer | null> {
+		if (DesktopBridge.isTauri()) {
+			try {
+				const buffer = await invoke<ArrayBuffer>('read_file_binary', { path });
+				return buffer;
+			} catch (err) {
+				console.warn(
+					`[DesktopBridge] Failed to read binary file at ${path}:`,
+					err,
+				);
+				return null;
+			}
+		}
+		return null;
+	}
+
 	public static async readTextFile(path: string): Promise<string | null> {
 		if (DesktopBridge.isTauri()) {
 			try {

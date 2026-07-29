@@ -5,6 +5,8 @@ import {
 	type TLResizeInfo,
 } from 'tldraw';
 
+import { TrackShapeUtil } from './TrackShapeUtil';
+
 export class CustomNoteShapeUtil extends NoteShapeUtil {
 	static override type = 'note' as const;
 
@@ -25,4 +27,4 @@ export class CustomNoteShapeUtil extends NoteShapeUtil {
 	}
 }
 
-export const customShapeUtils = [CustomNoteShapeUtil];
+export const customShapeUtils = [CustomNoteShapeUtil, TrackShapeUtil];

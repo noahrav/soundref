@@ -2,6 +2,7 @@ import type { IconDefinition } from '@fortawesome/free-solid-svg-icons';
 import {
 	faChevronRight,
 	faFont,
+	faMusic,
 	faNoteSticky,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -15,6 +16,7 @@ import {
 	useEditor,
 	useEditorComponents,
 } from 'tldraw';
+import { fetchCoverArt, parseStreamUrl } from '../utils/embedUtils';
 import { toRichText } from '../utils/richText';
 
 interface MenuPosition {
@@ -44,9 +46,14 @@ interface MenuGroupDef {
 	items: MenuItemDef[];
 }
 
+interface CustomContextMenuProps extends TLUiContextMenuProps {
+	onOpenTrackModal?: (pos?: { x: number; y: number }, editShape?: any) => void;
+}
+
 export const CustomContextMenu = track(function CustomContextMenu({
 	children,
-}: TLUiContextMenuProps) {
+	onOpenTrackModal,
+}: CustomContextMenuProps) {
 	const { t } = useTranslation();
 	const editor = useEditor();
 	const actions = useActions();
@@ -55,6 +62,10 @@ export const CustomContextMenu = track(function CustomContextMenu({
 
 	const selectedIds = editor.getSelectedShapeIds();
 	const hasSelection = selectedIds.length > 0;
+	const selectedShapes = editor.getSelectedShapes();
+	const singleSelectedShape =
+		selectedShapes.length === 1 ? selectedShapes[0] : null;
+	const isTrackSelected = singleSelectedShape?.type === 'track';
 
 	const handlePasteContent = useCallback(async () => {
 		try {
@@ -81,16 +92,45 @@ export const CustomContextMenu = track(function CustomContextMenu({
 					};
 					const point = editor.screenToPage(targetScreenPoint);
 					const newId = createShapeId();
-					editor.createShape({
-						id: newId,
-						type: 'text',
-						x: point.x - 100,
-						y: point.y - 20,
-						props: {
-							richText: toRichText(text),
-							autoSize: true,
-						},
-					});
+
+					// Check if stream link or audio file path
+					const streamInfo = parseStreamUrl(text);
+					const isAudioFile = text.match(
+						/\.(mp3|wav|ogg|flac|m4a|aac)(\?.*)?$/i,
+					);
+
+					if (streamInfo.isStream || isAudioFile) {
+						const coverUrl = await fetchCoverArt(text);
+						const titleFromUrl =
+							text.split('/').pop()?.split('?')[0] || 'Track';
+						editor.createShape({
+							id: newId,
+							type: 'track',
+							x: point.x - 100,
+							y: point.y - 100,
+							props: {
+								title: titleFromUrl,
+								imageUrl: coverUrl,
+								audioSource: text,
+								sourceType: streamInfo.isStream ? 'stream' : 'local',
+								playMode: 'oneshot',
+								loopRegion: { start: 0, end: 0 },
+								w: 200,
+								h: 200,
+							},
+						});
+					} else {
+						editor.createShape({
+							id: newId,
+							type: 'text',
+							x: point.x - 100,
+							y: point.y - 20,
+							props: {
+								richText: toRichText(text),
+								autoSize: true,
+							},
+						});
+					}
 					editor.select(newId);
 					return;
 				}
@@ -103,6 +143,30 @@ export const CustomContextMenu = track(function CustomContextMenu({
 
 	const selectionGroups: MenuGroupDef[] = hasSelection
 		? [
+				...(isTrackSelected
+					? [
+							{
+								id: 'track-edit',
+								items: [
+									{
+										id: 'edit-track',
+										label: t('contextMenu.editTrack'),
+										onSelect: () => {
+											if (onOpenTrackModal && singleSelectedShape) {
+												onOpenTrackModal(
+													{
+														x: singleSelectedShape.x,
+														y: singleSelectedShape.y,
+													},
+													singleSelectedShape,
+												);
+											}
+										},
+									},
+								],
+							},
+						]
+					: []),
 				{
 					id: 'clipboard',
 					items: [
@@ -235,6 +299,23 @@ export const CustomContextMenu = track(function CustomContextMenu({
 											});
 											editor.select(newId);
 											editor.setEditingShape(newId);
+										}
+									},
+								},
+								{
+									id: 'add-track-item',
+									label: t('board.trackItem'),
+									icon: faMusic,
+									onSelect: () => {
+										if (menu && onOpenTrackModal) {
+											const point = editor.screenToPage({
+												x: menu.x,
+												y: menu.y,
+											});
+											onOpenTrackModal({
+												x: point.x - 100,
+												y: point.y - 100,
+											});
 										}
 									},
 								},

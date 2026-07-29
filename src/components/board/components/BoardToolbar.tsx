@@ -3,6 +3,7 @@ import {
 	faChevronDown,
 	faFont,
 	faHand,
+	faMusic,
 	faNoteSticky,
 	faPlus,
 } from '@fortawesome/free-solid-svg-icons';
@@ -13,7 +14,13 @@ import { createShapeId, track, useEditor } from 'tldraw';
 import { toRichText } from '../utils/richText';
 import './BoardToolbar.scss';
 
-export const BoardToolbar = track(function BoardToolbar() {
+interface BoardToolbarProps {
+	onOpenTrackModal?: (pos?: { x: number; y: number }) => void;
+}
+
+export const BoardToolbar = track(function BoardToolbar({
+	onOpenTrackModal,
+}: BoardToolbarProps) {
 	const { t } = useTranslation();
 	const editor = useEditor();
 	const currentTool = editor.getCurrentToolId();
@@ -61,6 +68,15 @@ export const BoardToolbar = track(function BoardToolbar() {
 		editor.setEditingShape(newId);
 		setShowAddMenu(false);
 	}, [editor]);
+
+	const handleAddTrackItem = useCallback(() => {
+		const viewportBounds = editor.getViewportPageBounds();
+		const center = viewportBounds.center;
+		if (onOpenTrackModal) {
+			onOpenTrackModal({ x: center.x - 100, y: center.y - 100 });
+		}
+		setShowAddMenu(false);
+	}, [editor, onOpenTrackModal]);
 
 	useEffect(() => {
 		if (!showAddMenu) return;
@@ -139,6 +155,14 @@ export const BoardToolbar = track(function BoardToolbar() {
 						>
 							<FontAwesomeIcon icon={faNoteSticky} />
 							<span>{t('board.stickyNote')}</span>
+						</button>
+						<button
+							type="button"
+							className="board-toolbar__dropdown-item"
+							onClick={handleAddTrackItem}
+						>
+							<FontAwesomeIcon icon={faMusic} />
+							<span>{t('board.trackItem')}</span>
 						</button>
 					</div>
 				)}

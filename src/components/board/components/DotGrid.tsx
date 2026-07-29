@@ -26,39 +26,22 @@ export function DotGrid() {
 	const screenGap = stepGap * z;
 	const translateX = x * z;
 	const translateY = y * z;
-	const dotRadius = 1.25;
 
 	return (
-		<svg
-			aria-label="Canvas grid"
+		<div
 			className="tl-grid dot-grid"
-			width="100%"
-			height="100%"
 			style={{
 				position: 'absolute',
 				inset: 0,
 				pointerEvents: 'none',
 				zIndex: 0,
+				backgroundImage:
+					'radial-gradient(circle, var(--tl-color-grid, #94a3b8) 1.25px, transparent 1.25px)',
+				backgroundSize: `${screenGap}px ${screenGap}px`,
+				backgroundPosition: `${translateX}px ${translateY}px`,
+				opacity: 0.5,
+				willChange: 'background-position, background-size',
 			}}
-		>
-			<defs>
-				<pattern
-					id="dot-grid-pattern"
-					width={screenGap}
-					height={screenGap}
-					patternUnits="userSpaceOnUse"
-					patternTransform={`translate(${translateX}, ${translateY})`}
-				>
-					<circle
-						cx={screenGap / 2}
-						cy={screenGap / 2}
-						r={dotRadius}
-						fill="var(--tl-color-grid, #94a3b8)"
-						opacity={0.5}
-					/>
-				</pattern>
-			</defs>
-			<rect width="100%" height="100%" fill="url(#dot-grid-pattern)" />
-		</svg>
+		/>
 	);
 }

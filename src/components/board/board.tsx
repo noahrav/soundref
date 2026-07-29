@@ -1,16 +1,30 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { type Editor, PageRecordType, type TLShapeId, Tldraw } from 'tldraw';
+import {
+	createShapeId,
+	type Editor,
+	PageRecordType,
+	type TLShapeId,
+	Tldraw,
+} from 'tldraw';
 import 'tldraw/tldraw.css';
 import { ProjectService } from '../../api/ProjectService';
 import type { StickyNoteItem } from '../../core/model/item/StickyNoteItem';
 import { TextItem } from '../../core/model/item/TextItem';
+import { TrackItem } from '../../core/model/item/TrackItem';
 import './board.scss';
 import { BoardToolbar } from './components/BoardToolbar';
+import { CustomContextMenu } from './components/ContextMenu';
+import { MiniPlayer } from './components/MiniPlayer';
 import { PageTabs } from './components/PageTabs';
+import {
+	type TrackFormData,
+	TrackFormModal,
+} from './components/TrackFormModal';
 import { customShapeUtils } from './config/customShapes';
 import { uiComponents } from './config/ui-components';
 import { uiOverrides } from './config/ui-overrides';
+import { fetchCoverArt, parseStreamUrl } from './utils/embedUtils';
 import { fromRichText, toRichText } from './utils/richText';
 
 interface BoardProps {
@@ -37,19 +51,201 @@ export default function Board({
 		initialProjectId,
 	);
 	const service = ProjectService.instance();
+	const editorRef = useRef<Editor | null>(null);
+
+	// Modal State
+	const [isTrackModalOpen, setIsTrackModalOpen] = useState(false);
+	const [trackModalPos, setTrackModalPos] = useState<{
+		x: number;
+		y: number;
+	} | null>(null);
+	const [editingTrackShape, setEditingTrackShape] = useState<any>(null);
+	const [initialTrackData, setInitialTrackData] = useState<
+		Partial<TrackFormData>
+	>({});
+
+	const handleOpenTrackModal = useCallback(
+		(
+			pos?: { x: number; y: number },
+			shapeToEdit?: any,
+			defaultData?: Partial<TrackFormData>,
+		) => {
+			setTrackModalPos(pos || null);
+			setEditingTrackShape(shapeToEdit || null);
+			if (shapeToEdit) {
+				const p = shapeToEdit.props;
+				setInitialTrackData({
+					title: p.title || '',
+					imageUrl: p.imageUrl || '',
+					audioSource: p.audioSource || '',
+					sourceType: p.sourceType || 'local',
+					playMode: p.playMode || 'oneshot',
+					loopRegion: p.loopRegion || { start: 0, end: 0 },
+				});
+			} else if (defaultData) {
+				setInitialTrackData(defaultData);
+			} else {
+				setInitialTrackData({});
+			}
+			setIsTrackModalOpen(true);
+		},
+		[],
+	);
+
+	useEffect(() => {
+		const handleEditTrackEvent = (e: CustomEvent) => {
+			const shape = e.detail;
+			if (shape && editorRef.current) {
+				const bounds = editorRef.current.getShapePageBounds(shape.id);
+				handleOpenTrackModal(
+					bounds ? { x: bounds.x, y: bounds.y } : undefined,
+					shape,
+				);
+			}
+		};
+
+		window.addEventListener(
+			'soundref:edit-track',
+			handleEditTrackEvent as EventListener,
+		);
+		return () =>
+			window.removeEventListener(
+				'soundref:edit-track',
+				handleEditTrackEvent as EventListener,
+			);
+	}, [handleOpenTrackModal]);
+
+	const handleSaveTrackForm = useCallback(
+		(data: TrackFormData) => {
+			const editor = editorRef.current;
+			if (!editor) return;
+
+			if (editingTrackShape) {
+				editor.updateShape({
+					id: editingTrackShape.id,
+					type: 'track',
+					props: {
+						title: data.title,
+						imageUrl: data.imageUrl,
+						audioSource: data.audioSource,
+						sourceType: data.sourceType,
+						playMode: data.playMode,
+						loopRegion: data.loopRegion,
+					},
+				});
+			} else {
+				const point = trackModalPos || {
+					x: editor.getViewportPageBounds().center.x - 100,
+					y: editor.getViewportPageBounds().center.y - 100,
+				};
+				const newId = createShapeId();
+				editor.createShape({
+					id: newId,
+					type: 'track',
+					x: point.x,
+					y: point.y,
+					props: {
+						title: data.title,
+						imageUrl: data.imageUrl,
+						audioSource: data.audioSource,
+						sourceType: data.sourceType,
+						playMode: data.playMode,
+						loopRegion: data.loopRegion,
+						w: 200,
+						h: 200,
+					},
+				});
+				editor.select(newId);
+			}
+		},
+		[editingTrackShape, trackModalPos],
+	);
 
 	const handleMount = useCallback(
 		(editor: Editor) => {
+			editorRef.current = editor;
 			editor.user.updateUserPreferences({ inputMode: 'mouse' });
 			editor.updateInstanceState({ isGridMode: true });
 			editor.setCameraOptions({ wheelBehavior: 'zoom' });
 			editor.setCurrentTool('select');
 
 			editor.sideEffects.registerBeforeChangeHandler('shape', (_prev, next) => {
-				if (next.type === 'note' && next.rotation !== 0) {
+				if (
+					(next.type === 'note' || next.type === 'track') &&
+					next.rotation !== 0
+				) {
 					return { ...next, rotation: 0 };
 				}
 				return next;
+			});
+
+			const handleAudioOrStreamUrl = async (urlStr: string, point?: any) => {
+				const clean = urlStr.trim();
+				const streamInfo = parseStreamUrl(clean);
+				const isAudioFile = clean.match(
+					/\.(mp3|wav|ogg|flac|m4a|aac)(\?.*)?$/i,
+				);
+				if (streamInfo.isStream || isAudioFile) {
+					const targetPoint = point || editor.inputs.getCurrentPagePoint();
+					const newId = createShapeId();
+					const coverUrl = await fetchCoverArt(clean);
+					const titleFromUrl = clean.split('/').pop()?.split('?')[0] || 'Track';
+					editor.createShape({
+						id: newId,
+						type: 'track',
+						x: targetPoint.x - 100,
+						y: targetPoint.y - 100,
+						props: {
+							title: titleFromUrl,
+							imageUrl: coverUrl,
+							audioSource: clean,
+							sourceType: streamInfo.isStream ? 'stream' : 'local',
+							playMode: 'oneshot',
+							loopRegion: { start: 0, end: 0 },
+							w: 200,
+							h: 200,
+						},
+					});
+					editor.select(newId);
+					return true;
+				}
+				return false;
+			};
+
+			editor.registerExternalContentHandler('url', async ({ url, point }) => {
+				const handled = await handleAudioOrStreamUrl(url, point);
+				if (handled) return;
+				const targetPoint = point || editor.inputs.getCurrentPagePoint();
+				const newId = createShapeId();
+				editor.createShape({
+					id: newId,
+					type: 'text',
+					x: targetPoint.x - 100,
+					y: targetPoint.y - 20,
+					props: {
+						richText: toRichText(url),
+						autoSize: true,
+					},
+				});
+				editor.select(newId);
+			});
+
+			editor.registerExternalContentHandler('text', async ({ text, point }) => {
+				const handled = await handleAudioOrStreamUrl(text, point);
+				if (handled) return;
+				const targetPoint = point || editor.inputs.getCurrentPagePoint();
+				const newId = createShapeId();
+				editor.createShape({
+					id: newId,
+					type: 'text',
+					x: targetPoint.x - 100,
+					y: targetPoint.y - 20,
+					props: {
+						richText: toRichText(text),
+						autoSize: true,
+					},
+				});
+				editor.select(newId);
 			});
 
 			void (async () => {
@@ -114,6 +310,30 @@ export default function Board({
 													autoSize: !textItem.width,
 												},
 											});
+										} else if (
+											item instanceof TrackItem ||
+											(item as any).type === 'TrackItem'
+										) {
+											const trackItem = item as TrackItem;
+											editor.createShape({
+												id: shapeId,
+												type: 'track',
+												x: item.position.x,
+												y: item.position.y,
+												props: {
+													title: trackItem.title || 'Track',
+													imageUrl: trackItem.imageUrl || '',
+													audioSource: trackItem.audioSource || '',
+													sourceType: trackItem.sourceType || 'local',
+													playMode: trackItem.playMode || 'oneshot',
+													loopRegion: trackItem.loopRegion || {
+														start: 0,
+														end: 0,
+													},
+													w: trackItem.width || 200,
+													h: trackItem.width || 200,
+												},
+											});
 										} else {
 											const stickyItem = item as StickyNoteItem;
 											const noteContent = stickyItem.content || '';
@@ -174,16 +394,7 @@ export default function Board({
 								const cleanWsId = currentPageId.replace(/^page:/, '');
 								const pageShapes = editor.getCurrentPageShapes();
 
-								const itemsToSync: Array<{
-									id: string;
-									type: string;
-									x: number;
-									y: number;
-									content: string;
-									scale?: number;
-									width?: number;
-									color?: string;
-								}> = [];
+								const itemsToSync: Array<any> = [];
 								pageShapes.forEach((shape) => {
 									if (shape.type === 'note') {
 										const cleanId = shape.id.replace(/^shape:/, '');
@@ -209,6 +420,23 @@ export default function Board({
 											scale: (shape.props as any)?.scale || 1,
 											width: (shape.props as any)?.w,
 										});
+									} else if (shape.type === 'track') {
+										const cleanId = shape.id.replace(/^shape:/, '');
+										const p = shape.props as any;
+										itemsToSync.push({
+											id: cleanId,
+											type: 'TrackItem',
+											x: shape.x,
+											y: shape.y,
+											title: p.title || 'Track',
+											imageUrl: p.imageUrl || '',
+											audioSource: p.audioSource || '',
+											sourceType: p.sourceType || 'local',
+											playMode: p.playMode || 'oneshot',
+											loopRegion: p.loopRegion || { start: 0, end: 0 },
+											scale: p.scale || 1,
+											width: p.w || 200,
+										});
 									}
 								});
 
@@ -217,7 +445,7 @@ export default function Board({
 									.catch((err) =>
 										console.warn('[Board] Could not sync items:', err),
 									);
-							}, 200);
+							}, 1200);
 						};
 
 						editor.store.listen((entry) => {
@@ -271,7 +499,7 @@ export default function Board({
 										.catch((err) =>
 											console.warn('[Board] Could not sync viewport:', err),
 										);
-								}, 200);
+								}, 500);
 							}
 
 							for (const recordId in entry.changes.updated) {
@@ -328,14 +556,130 @@ export default function Board({
 		[initialProjectId, service, t],
 	);
 
+	useEffect(() => {
+		const handleGlobalPaste = async (e: ClipboardEvent) => {
+			const target = e.target as HTMLElement;
+			if (
+				target.tagName === 'INPUT' ||
+				target.tagName === 'TEXTAREA' ||
+				target.isContentEditable
+			) {
+				return;
+			}
+			const text = e.clipboardData?.getData('text/plain')?.trim();
+			if (!text || !editorRef.current) return;
+
+			const streamInfo = parseStreamUrl(text);
+			const isAudioFile = text.match(/\.(mp3|wav|ogg|flac|m4a|aac)(\?.*)?$/i);
+
+			if (streamInfo.isStream || isAudioFile) {
+				e.preventDefault();
+				e.stopPropagation();
+
+				const editor = editorRef.current;
+				const point = editor.inputs.getCurrentPagePoint();
+				const newId = createShapeId();
+				const coverUrl = await fetchCoverArt(text);
+				const titleFromUrl = text.split('/').pop()?.split('?')[0] || 'Track';
+
+				editor.createShape({
+					id: newId,
+					type: 'track',
+					x: point.x - 100,
+					y: point.y - 100,
+					props: {
+						title: titleFromUrl,
+						imageUrl: coverUrl,
+						audioSource: text,
+						sourceType: streamInfo.isStream ? 'stream' : 'local',
+						playMode: 'oneshot',
+						loopRegion: { start: 0, end: 0 },
+						w: 200,
+						h: 200,
+					},
+				});
+				editor.select(newId);
+			}
+		};
+
+		window.addEventListener('paste', handleGlobalPaste, true);
+		return () => window.removeEventListener('paste', handleGlobalPaste, true);
+	}, []);
+
+	const handleDragOver = useCallback((e: React.DragEvent) => {
+		e.preventDefault();
+	}, []);
+
+	const handleDrop = useCallback(
+		(e: React.DragEvent) => {
+			e.preventDefault();
+			const files = Array.from(e.dataTransfer.files);
+			const audioFile = files.find(
+				(f) =>
+					f.type.startsWith('audio/') ||
+					f.name.match(/\.(mp3|wav|ogg|flac|m4a|aac)$/i),
+			);
+			if (audioFile && editorRef.current) {
+				const point = editorRef.current.screenToPage({
+					x: e.clientX,
+					y: e.clientY,
+				});
+				const rawPath = (audioFile as any).path;
+				const fileName = audioFile.name.replace(/\.[^/.]+$/, '');
+				if (rawPath) {
+					handleOpenTrackModal(
+						{ x: point.x - 100, y: point.y - 100 },
+						undefined,
+						{
+							title: fileName,
+							audioSource: rawPath,
+							sourceType: 'local',
+						},
+					);
+				} else {
+					const reader = new FileReader();
+					reader.onload = (event) => {
+						if (event.target?.result) {
+							handleOpenTrackModal(
+								{ x: point.x - 100, y: point.y - 100 },
+								undefined,
+								{
+									title: fileName,
+									audioSource: event.target.result as string,
+									sourceType: 'local',
+								},
+							);
+						}
+					};
+					reader.readAsDataURL(audioFile);
+				}
+			}
+		},
+		[handleOpenTrackModal],
+	);
+
+	const customContextMenuWithProps = useCallback(
+		(props: any) => (
+			<CustomContextMenu {...props} onOpenTrackModal={handleOpenTrackModal} />
+		),
+		[handleOpenTrackModal],
+	);
+
 	return (
-		<div style={{ position: 'fixed', inset: 0 }}>
+		<div
+			style={{ position: 'fixed', inset: 0 }}
+			onDragOver={handleDragOver}
+			onDrop={handleDrop}
+		>
 			<Tldraw
 				autoFocus
 				colorScheme="system"
 				locale={i18n.language}
 				shapeUtils={customShapeUtils}
-				components={uiComponents}
+				components={{
+					...uiComponents,
+					ContextMenu: customContextMenuWithProps,
+				}}
 				overrides={uiOverrides}
 				onMount={handleMount}
 				options={{
@@ -347,8 +691,16 @@ export default function Board({
 					projectId={activeProjectId}
 					onBackToProjects={onBackToProjects}
 				/>
-				<BoardToolbar />
+				<MiniPlayer />
+				<BoardToolbar onOpenTrackModal={handleOpenTrackModal} />
 			</Tldraw>
+
+			<TrackFormModal
+				isOpen={isTrackModalOpen}
+				initialData={initialTrackData}
+				onSave={handleSaveTrackForm}
+				onClose={() => setIsTrackModalOpen(false)}
+			/>
 		</div>
 	);
 }

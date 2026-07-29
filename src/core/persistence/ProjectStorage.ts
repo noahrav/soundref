@@ -1,6 +1,7 @@
 import type { BoardItem } from '../model/item/BoardItem';
 import { StickyNoteItem } from '../model/item/StickyNoteItem';
 import { TextItem } from '../model/item/TextItem';
+import { TrackItem } from '../model/item/TrackItem';
 import { Position } from '../model/Position';
 import { Project } from '../model/Project';
 import { ViewportState } from '../model/ViewportState';
@@ -29,6 +30,12 @@ export interface ProjectDataJSON {
 			scale?: number;
 			width?: number;
 			color?: string;
+			title?: string;
+			imageUrl?: string;
+			audioSource?: string;
+			sourceType?: 'local' | 'stream';
+			playMode?: 'oneshot' | 'loop';
+			loopRegion?: { start: number; end: number };
 		}>;
 	}>;
 }
@@ -150,6 +157,22 @@ export class ProjectStorage {
 							width: textItem.width,
 						};
 					}
+					if (item instanceof TrackItem || (item as any).type === 'TrackItem') {
+						const trackItem = item as TrackItem;
+						return {
+							id: trackItem.id,
+							type: 'TrackItem',
+							position: { x: trackItem.position.x, y: trackItem.position.y },
+							title: trackItem.title || 'Track',
+							imageUrl: trackItem.imageUrl || '',
+							audioSource: trackItem.audioSource || '',
+							sourceType: trackItem.sourceType || 'local',
+							playMode: trackItem.playMode || 'oneshot',
+							loopRegion: trackItem.loopRegion || { start: 0, end: 0 },
+							scale: trackItem.scale || 1,
+							width: trackItem.width || 200,
+						};
+					}
 					const sticky = item as StickyNoteItem;
 					return {
 						id: sticky.id,
@@ -192,6 +215,19 @@ export class ProjectStorage {
 								itemJson.id,
 								itemJson.scale || 1,
 								itemJson.width,
+							);
+						} else if (itemJson.type === 'TrackItem') {
+							item = new TrackItem(
+								pos,
+								itemJson.title || 'Track',
+								itemJson.imageUrl || '',
+								itemJson.audioSource || '',
+								itemJson.sourceType || 'local',
+								itemJson.playMode || 'oneshot',
+								itemJson.loopRegion || { start: 0, end: 0 },
+								itemJson.id,
+								itemJson.scale || 1,
+								itemJson.width || 200,
 							);
 						} else {
 							item = new StickyNoteItem(

@@ -5,6 +5,7 @@ import { DeleteItemCommand } from '../core/command/workspace/DeleteItemCommand';
 import type { BoardItem } from '../core/model/item/BoardItem';
 import { StickyNoteItem } from '../core/model/item/StickyNoteItem';
 import { TextItem } from '../core/model/item/TextItem';
+import { TrackItem } from '../core/model/item/TrackItem';
 import { Position } from '../core/model/Position';
 import { Project } from '../core/model/Project';
 import type { Workspace } from '../core/model/Workspace';
@@ -214,6 +215,12 @@ export class ProjectService {
 			scale?: number;
 			width?: number;
 			color?: string;
+			title?: string;
+			imageUrl?: string;
+			audioSource?: string;
+			sourceType?: 'local' | 'stream';
+			playMode?: 'oneshot' | 'loop';
+			loopRegion?: { start: number; end: number };
 		}>,
 	): Promise<void> {
 		const cleanWsId = this.stripPagePrefix(workspaceId);
@@ -229,6 +236,19 @@ export class ProjectService {
 			let item: BoardItem;
 			if (p.type === 'TextItem' || p.type === 'text') {
 				item = new TextItem(pos, p.content || '', p.id, p.scale || 1, p.width);
+			} else if (p.type === 'TrackItem' || p.type === 'track') {
+				item = new TrackItem(
+					pos,
+					p.title || 'Track',
+					p.imageUrl || '',
+					p.audioSource || '',
+					p.sourceType || 'local',
+					p.playMode || 'oneshot',
+					p.loopRegion || { start: 0, end: 0 },
+					p.id,
+					p.scale || 1,
+					p.width || 200,
+				);
 			} else {
 				item = new StickyNoteItem(
 					pos,
@@ -256,6 +276,12 @@ export class ProjectService {
 			scale?: number;
 			width?: number;
 			color?: string;
+			title?: string;
+			imageUrl?: string;
+			audioSource?: string;
+			sourceType?: 'local' | 'stream';
+			playMode?: 'oneshot' | 'loop';
+			loopRegion?: { start: number; end: number };
 		},
 	): Promise<BoardItem> {
 		const cleanWsId = this.stripPagePrefix(workspaceId);
@@ -274,6 +300,22 @@ export class ProjectService {
 				undefined,
 				itemPayload.scale || 1,
 				itemPayload.width,
+			);
+		} else if (
+			itemPayload.type === 'TrackItem' ||
+			itemPayload.type === 'track'
+		) {
+			item = new TrackItem(
+				pos,
+				itemPayload.title || 'Track',
+				itemPayload.imageUrl || '',
+				itemPayload.audioSource || '',
+				itemPayload.sourceType || 'local',
+				itemPayload.playMode || 'oneshot',
+				itemPayload.loopRegion || { start: 0, end: 0 },
+				undefined,
+				itemPayload.scale || 1,
+				itemPayload.width || 200,
 			);
 		} else {
 			item = new StickyNoteItem(

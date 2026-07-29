@@ -47,6 +47,7 @@
 		"addTitle": "Ajouter un élément",
 		"textItem": "Texte",
 		"stickyNote": "Post-it",
+		"trackItem": "Piste audio",
 		"addPage": "Ajouter une page",
 		"closePage": "Fermer {{name}}"
 	},
@@ -61,6 +62,38 @@
 		"delete": "Supprimer",
 		"add": "Ajouter",
 		"stickyNote": "Post-it",
+		"trackItem": "Piste audio",
+		"editTrack": "Modifier la piste audio",
 		"selectAll": "Tout sélectionner"
+	},
+	"miniPlayer": {
+		"play": "Lecture",
+		"pause": "Pause",
+		"stop": "Arrêter",
+		"goToTrack": "Aller à la piste jouée",
+		"goToTrackShort": "Voir"
+	},
+	"trackForm": {
+		"createTitle": "Nouvelle piste audio",
+		"editTitle": "Modifier la piste audio",
+		"defaultTitle": "Nouvelle Track",
+		"titleLabel": "Titre de la piste",
+		"titlePlaceholder": "Ex: Master v1, Reference synth...",
+		"coverLabel": "Pochette d'album (Image)",
+		"coverPlaceholder": "URL ou chemin d'accès vers l'image...",
+		"sourceTypeLabel": "Type de source audio",
+		"localFile": "Fichier local",
+		"streamLink": "Lien de streaming",
+		"audioFileLabel": "Fichier audio",
+		"audioFilePlaceholder": "Chemin du fichier audio (.mp3, .wav...)...",
+		"streamUrlLabel": "Lien de la piste (Bandcamp, Spotify, YT...)",
+		"streamUrlPlaceholder": "https://bandcamp.com/...",
+		"playModeLabel": "Mode de lecture",
+		"oneshot": "One-shot (Unique)",
+		"loop": "Boucle (Loop)",
+		"loopRegionLabel": "Région de boucle (début / fin en secondes)",
+		"startSec": "Début (s)",
+		"endSec": "Fin (s)",
+		"browse": "Parcourir"
 	}
 }
