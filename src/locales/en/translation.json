@@ -94,6 +94,11 @@
 		"loopRegionLabel": "Loop Region (start / end in seconds)",
 		"startSec": "Start (s)",
 		"endSec": "End (s)",
+		"setToStart": "Set to start",
+		"setToEnd": "Set to end",
+		"setFullTrack": "Full track",
+		"setToStartShort": "Start",
+		"setToEndShort": "End",
 		"browse": "Browse"
 	}
 }

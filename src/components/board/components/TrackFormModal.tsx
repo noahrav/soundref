@@ -51,9 +51,15 @@ export function TrackFormModal({
 	const [playMode, setPlayMode] = useState<'oneshot' | 'loop'>(
 		initialData?.playMode || 'oneshot',
 	);
-	const [loopRegion, setLoopRegion] = useState<LoopRegion>(
-		initialData?.loopRegion || { start: 0, end: 10 },
-	);
+	const [loopRegion, setLoopRegion] = useState<LoopRegion>(() => {
+		if (
+			initialData?.loopRegion &&
+			initialData.loopRegion.end > initialData.loopRegion.start
+		) {
+			return initialData.loopRegion;
+		}
+		return { start: 0, end: 0 };
+	});
 	const [audioDuration, setAudioDuration] = useState<number>(30);
 	const [waveformPeaks, setWaveformPeaks] = useState<number[]>([]);
 	const [activeDragHandle, setActiveDragHandle] = useState<
@@ -71,7 +77,14 @@ export function TrackFormModal({
 			setAudioSource(initialData?.audioSource || '');
 			setSourceType(initialData?.sourceType || 'local');
 			setPlayMode(initialData?.playMode || 'oneshot');
-			setLoopRegion(initialData?.loopRegion || { start: 0, end: 10 });
+			if (
+				initialData?.loopRegion &&
+				initialData.loopRegion.end > initialData.loopRegion.start
+			) {
+				setLoopRegion(initialData.loopRegion);
+			} else {
+				setLoopRegion({ start: 0, end: 0 });
+			}
 		}
 	}, [isOpen, initialData]);
 
@@ -108,13 +121,20 @@ export function TrackFormModal({
 				audio.addEventListener('loadedmetadata', () => {
 					if (!isMounted) return;
 					if (audio.duration && !isNaN(audio.duration)) {
-						setAudioDuration(audio.duration);
-						if (loopRegion.end === 0 || loopRegion.end > audio.duration) {
-							setLoopRegion((prev) => ({
-								...prev,
-								end: Math.floor(audio.duration),
-							}));
-						}
+						const dur = Math.round(audio.duration * 100) / 100;
+						setAudioDuration(dur);
+						setLoopRegion((prev) => {
+							if (
+								prev.end === 0 ||
+								prev.end === 10 ||
+								prev.end > dur ||
+								!initialData?.loopRegion ||
+								initialData.loopRegion.end <= initialData.loopRegion.start
+							) {
+								return { start: prev.start, end: dur };
+							}
+							return prev;
+						});
 					}
 				});
 
@@ -219,8 +239,10 @@ export function TrackFormModal({
 				: Array.from({ length: 100 }, (_, i) => Math.sin(i * 0.2) * 0.4 + 0.5);
 
 		const maxDur = audioDuration || 30;
+		const effectiveEnd =
+			loopRegion.end > loopRegion.start ? loopRegion.end : maxDur;
 		const startRatio = Math.max(0, loopRegion.start / maxDur);
-		const endRatio = Math.min(1, loopRegion.end / maxDur);
+		const endRatio = Math.min(1, effectiveEnd / maxDur);
 
 		const startX = width * startRatio;
 		const endX = width * endRatio;
@@ -271,8 +293,10 @@ export function TrackFormModal({
 		const maxDur = audioDuration || 30;
 		const targetTime = Math.round(ratio * maxDur * 100) / 100;
 
+		const effectiveEnd =
+			loopRegion.end > loopRegion.start ? loopRegion.end : maxDur;
 		const startRatio = loopRegion.start / maxDur;
-		const endRatio = loopRegion.end / maxDur;
+		const endRatio = effectiveEnd / maxDur;
 
 		const distStart = Math.abs(ratio - startRatio);
 		const distEnd = Math.abs(ratio - endRatio);
@@ -281,7 +305,10 @@ export function TrackFormModal({
 			setActiveDragHandle('start');
 			setLoopRegion((prev) => ({
 				...prev,
-				start: Math.min(targetTime, Math.max(0, prev.end - 0.01)),
+				start: Math.min(
+					targetTime,
+					Math.max(0, (prev.end > prev.start ? prev.end : maxDur) - 0.01),
+				),
 			}));
 		} else {
 			setActiveDragHandle('end');
@@ -307,7 +334,10 @@ export function TrackFormModal({
 		if (activeDragHandle === 'start') {
 			setLoopRegion((prev) => ({
 				...prev,
-				start: Math.min(targetTime, Math.max(0, prev.end - 0.01)),
+				start: Math.min(
+					targetTime,
+					Math.max(0, (prev.end > prev.start ? prev.end : maxDur) - 0.01),
+				),
 			}));
 		} else {
 			setLoopRegion((prev) => ({
@@ -558,7 +588,47 @@ export function TrackFormModal({
 					{/* Loop Region Selection Widget */}
 					{playMode === 'loop' && (
 						<div className="track-modal__loop-widget">
-							<label>{t('trackForm.loopRegionLabel')}</label>
+							<div className="track-modal__loop-header">
+								<label>{t('trackForm.loopRegionLabel')}</label>
+								<div className="track-modal__loop-actions">
+									<button
+										type="button"
+										className="track-modal__quick-btn"
+										onClick={() =>
+											setLoopRegion((prev) => ({ ...prev, start: 0 }))
+										}
+										title={t('trackForm.setToStart')}
+									>
+										{t('trackForm.setToStartShort')}
+									</button>
+									<button
+										type="button"
+										className="track-modal__quick-btn"
+										onClick={() =>
+											setLoopRegion((prev) => ({
+												...prev,
+												end: Math.round((audioDuration || 30) * 100) / 100,
+											}))
+										}
+										title={t('trackForm.setToEnd')}
+									>
+										{t('trackForm.setToEndShort')}
+									</button>
+									<button
+										type="button"
+										className="track-modal__quick-btn"
+										onClick={() =>
+											setLoopRegion({
+												start: 0,
+												end: Math.round((audioDuration || 30) * 100) / 100,
+											})
+										}
+										title={t('trackForm.setFullTrack')}
+									>
+										{t('trackForm.setFullTrack')}
+									</button>
+								</div>
+							</div>
 
 							<div className="track-modal__canvas-wrapper">
 								<canvas
@@ -576,39 +646,72 @@ export function TrackFormModal({
 							<div className="track-modal__range-inputs">
 								<div className="track-modal__range-field">
 									<span>{t('trackForm.startSec')}</span>
-									<input
-										type="number"
-										min={0}
-										max={loopRegion.end - 0.01}
-										step="any"
-										value={loopRegion.start}
-										onChange={(e) =>
-											setLoopRegion((prev) => ({
-												...prev,
-												start: Math.max(0, parseFloat(e.target.value) || 0),
-											}))
-										}
-									/>
+									<div className="track-modal__input-with-action">
+										<input
+											type="number"
+											min={0}
+											max={Math.max(
+												0,
+												(loopRegion.end || audioDuration || 30) - 0.01,
+											)}
+											step="any"
+											value={loopRegion.start}
+											onChange={(e) =>
+												setLoopRegion((prev) => ({
+													...prev,
+													start: Math.max(0, parseFloat(e.target.value) || 0),
+												}))
+											}
+										/>
+										<button
+											type="button"
+											className="track-modal__snap-btn"
+											onClick={() =>
+												setLoopRegion((prev) => ({ ...prev, start: 0 }))
+											}
+											title={t('trackForm.setToStart')}
+										>
+											0s
+										</button>
+									</div>
 								</div>
 
 								<div className="track-modal__range-field">
 									<span>{t('trackForm.endSec')}</span>
-									<input
-										type="number"
-										min={loopRegion.start + 0.01}
-										max={audioDuration || 300}
-										step="any"
-										value={loopRegion.end}
-										onChange={(e) =>
-											setLoopRegion((prev) => ({
-												...prev,
-												end: Math.max(
-													prev.start + 0.01,
-													parseFloat(e.target.value) || prev.start + 0.1,
-												),
-											}))
-										}
-									/>
+									<div className="track-modal__input-with-action">
+										<input
+											type="number"
+											min={loopRegion.start + 0.01}
+											max={audioDuration || 300}
+											step="any"
+											value={
+												loopRegion.end ||
+												Math.round((audioDuration || 30) * 100) / 100
+											}
+											onChange={(e) =>
+												setLoopRegion((prev) => ({
+													...prev,
+													end: Math.max(
+														prev.start + 0.01,
+														parseFloat(e.target.value) || prev.start + 0.1,
+													),
+												}))
+											}
+										/>
+										<button
+											type="button"
+											className="track-modal__snap-btn"
+											onClick={() =>
+												setLoopRegion((prev) => ({
+													...prev,
+													end: Math.round((audioDuration || 30) * 100) / 100,
+												}))
+											}
+											title={t('trackForm.setToEnd')}
+										>
+											Max
+										</button>
+									</div>
 								</div>
 							</div>
 						</div>

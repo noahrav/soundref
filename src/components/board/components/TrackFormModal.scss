@@ -183,6 +183,38 @@
     }
   }
 
+  &__loop-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__loop-actions {
+    display: flex;
+    gap: 4px;
+  }
+
+  &__quick-btn {
+    height: 22px;
+    padding: 0 8px;
+    background: #ffffff;
+    border: 1px solid #111111;
+    border-radius: 2px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    font-family: inherit;
+    color: #111111;
+    cursor: pointer;
+    transition: all 0.12s ease;
+
+    &:hover {
+      background: #111111;
+      color: #ffffff;
+    }
+  }
+
   &__canvas-wrapper {
     width: 100%;
     height: 60px;
@@ -205,7 +237,7 @@
   &__range-field {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     font-size: 0.75rem;
     color: #111111;
     font-weight: 500;
@@ -219,6 +251,31 @@
       font-size: 0.75rem;
       font-family: inherit;
       outline: none;
+    }
+  }
+
+  &__input-with-action {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  &__snap-btn {
+    height: 28px;
+    padding: 0 6px;
+    background: #ffffff;
+    border: 1px solid #111111;
+    border-radius: 2px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    font-family: inherit;
+    color: #111111;
+    cursor: pointer;
+    transition: all 0.12s ease;
+
+    &:hover {
+      background: #111111;
+      color: #ffffff;
     }
   }
 
@@ -333,6 +390,18 @@
 
       label {
         color: #eeeeee;
+      }
+    }
+
+    &__quick-btn,
+    &__snap-btn {
+      background: #1a1a1a;
+      border-color: #eeeeee;
+      color: #eeeeee;
+
+      &:hover {
+        background: #eeeeee;
+        color: #111111;
       }
     }
 

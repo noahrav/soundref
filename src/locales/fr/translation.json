@@ -94,6 +94,11 @@
 		"loopRegionLabel": "Région de boucle (début / fin en secondes)",
 		"startSec": "Début (s)",
 		"endSec": "Fin (s)",
+		"setToStart": "Positionner au début",
+		"setToEnd": "Positionner à la fin",
+		"setFullTrack": "Tout le morceau",
+		"setToStartShort": "Début",
+		"setToEndShort": "Fin",
 		"browse": "Parcourir"
 	}
 }

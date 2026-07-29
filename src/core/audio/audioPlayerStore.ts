@@ -42,13 +42,15 @@ class AudioPlayerStore {
 				this.currentTime = this.audioElement.currentTime;
 
 				// Handle loop region if configured
-				if (
-					this.currentTrack?.playMode === 'loop' &&
-					this.currentTrack.loopRegion &&
-					this.currentTrack.loopRegion.end > this.currentTrack.loopRegion.start
-				) {
-					const { start, end } = this.currentTrack.loopRegion;
-					if (this.currentTime >= end) {
+				if (this.currentTrack?.playMode === 'loop') {
+					const start = this.currentTrack.loopRegion?.start ?? 0;
+					const end =
+						this.currentTrack.loopRegion?.end &&
+						this.currentTrack.loopRegion.end > start
+							? this.currentTrack.loopRegion.end
+							: this.duration;
+
+					if (end > start && this.currentTime >= end) {
 						this.audioElement.currentTime = start;
 					}
 				}
@@ -63,14 +65,14 @@ class AudioPlayerStore {
 			this.audioElement.addEventListener('loadedmetadata', () => {
 				if (!this.audioElement) return;
 				this.duration = this.audioElement.duration || 0;
+				const start = this.currentTrack?.loopRegion?.start ?? 0;
 				if (
 					this.currentTrack?.playMode === 'loop' &&
-					this.currentTrack.loopRegion &&
-					this.currentTrack.loopRegion.start > 0 &&
-					this.currentTrack.loopRegion.start < this.duration
+					start > 0 &&
+					start < this.duration
 				) {
 					try {
-						this.audioElement.currentTime = this.currentTrack.loopRegion.start;
+						this.audioElement.currentTime = start;
 					} catch (e) {
 						console.warn('[AudioPlayer] Seek in loadedmetadata failed:', e);
 					}
@@ -81,7 +83,7 @@ class AudioPlayerStore {
 			this.audioElement.addEventListener('ended', () => {
 				if (this.currentTrack?.playMode === 'loop') {
 					if (this.audioElement) {
-						const start = this.currentTrack.loopRegion?.start || 0;
+						const start = this.currentTrack.loopRegion?.start ?? 0;
 						this.audioElement.currentTime = start;
 						this.audioElement.play().catch(() => {});
 					}
