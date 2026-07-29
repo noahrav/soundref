@@ -39,7 +39,7 @@ export function DotGrid() {
 					'radial-gradient(circle, var(--tl-color-grid, #94a3b8) 1.25px, transparent 1.25px)',
 				backgroundSize: `${screenGap}px ${screenGap}px`,
 				backgroundPosition: `${translateX}px ${translateY}px`,
-				opacity: 0.5,
+				opacity: 0.2,
 				willChange: 'background-position, background-size',
 			}}
 		/>
