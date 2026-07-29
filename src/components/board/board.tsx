@@ -45,6 +45,13 @@ export default function Board({
 			editor.setCameraOptions({ wheelBehavior: 'zoom' });
 			editor.setCurrentTool('select');
 
+			editor.sideEffects.registerBeforeChangeHandler('shape', (_prev, next) => {
+				if (next.type === 'note' && next.rotation !== 0) {
+					return { ...next, rotation: 0 };
+				}
+				return next;
+			});
+
 			void (async () => {
 				try {
 					let targetProjectId = initialProjectId;
