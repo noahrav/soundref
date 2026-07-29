@@ -2,6 +2,7 @@ import {
 	faCrosshairs,
 	faPause,
 	faPlay,
+	faRepeat,
 	faStop,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -28,6 +29,21 @@ export function MiniPlayer() {
 	const resolvedCoverUrl = useMediaUrl(currentTrack?.imageUrl);
 
 	if (!currentTrack) return null;
+
+	const isLoop =
+		currentTrack.playMode === 'loop' &&
+		currentTrack.sourceType === 'local' &&
+		duration > 0;
+
+	const loopStart = currentTrack.loopRegion?.start ?? 0;
+	const rawLoopEnd = currentTrack.loopRegion?.end ?? 0;
+	const loopEnd =
+		rawLoopEnd > loopStart ? Math.min(duration, rawLoopEnd) : duration;
+	const effectiveStart = Math.min(loopEnd, Math.max(0, loopStart));
+	const displayDuration = isLoop ? loopEnd - effectiveStart : duration;
+	const displayTime = isLoop
+		? Math.max(0, Math.min(displayDuration, currentTime - effectiveStart))
+		: currentTime;
 
 	const handleTogglePlayPause = () => {
 		audioPlayer.togglePlayPause();
@@ -68,8 +84,9 @@ export function MiniPlayer() {
 	};
 
 	const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const time = parseFloat(e.target.value);
-		audioPlayer.seekTo(time);
+		const timeVal = parseFloat(e.target.value);
+		const targetTime = isLoop ? effectiveStart + timeVal : timeVal;
+		audioPlayer.seekTo(targetTime);
 	};
 
 	const formatTime = (secs: number) => {
@@ -98,7 +115,14 @@ export function MiniPlayer() {
 					</span>
 					{currentTrack.sourceType === 'local' && (
 						<span className="mini-player__time">
-							{formatTime(currentTime)} / {formatTime(duration)}
+							{isLoop && (
+								<FontAwesomeIcon
+									icon={faRepeat}
+									style={{ marginRight: 4, fontSize: '0.85em' }}
+									title={t('trackForm.loop')}
+								/>
+							)}
+							{formatTime(displayTime)} / {formatTime(displayDuration)}
 						</span>
 					)}
 				</div>
@@ -136,14 +160,14 @@ export function MiniPlayer() {
 				</div>
 			</div>
 
-			{currentTrack.sourceType === 'local' && duration > 0 && (
+			{currentTrack.sourceType === 'local' && displayDuration > 0 && (
 				<div className="mini-player__progress-container">
 					<input
 						type="range"
 						min={0}
-						max={duration}
+						max={displayDuration}
 						step={0.1}
-						value={currentTime}
+						value={displayTime}
 						onChange={handleSeek}
 						className="mini-player__progress"
 					/>

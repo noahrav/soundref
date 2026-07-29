@@ -97,8 +97,8 @@
 		"setToStart": "Set to start",
 		"setToEnd": "Set to end",
 		"setFullTrack": "Full track",
-		"setToStartShort": "Start",
-		"setToEndShort": "End",
+		"setToStartShort": "From start",
+		"setToEndShort": "To end",
 		"browse": "Browse"
 	}
 }
