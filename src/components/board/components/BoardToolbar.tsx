@@ -10,8 +10,14 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { createShapeId, track, useEditor } from 'tldraw';
+import {
+	createShapeId,
+	type TLDefaultColorStyle,
+	track,
+	useEditor,
+} from 'tldraw';
 import { toRichText } from '../utils/richText';
+import { ColorPicker } from './ColorPicker';
 import './BoardToolbar.scss';
 
 /**
@@ -33,6 +39,26 @@ export const BoardToolbar = track(function BoardToolbar({
 	const currentTool = editor.getCurrentToolId();
 	const [showAddMenu, setShowAddMenu] = useState(false);
 	const addMenuRef = useRef<HTMLDivElement>(null);
+
+	const selectedShapes = editor.getSelectedShapes();
+	const selectedNotes = selectedShapes.filter((s) => s.type === 'note');
+	const activeNoteColor =
+		selectedNotes.length > 0
+			? (selectedNotes[0].props as any)?.color
+			: undefined;
+
+	const handleColorChange = useCallback(
+		(colorKey: TLDefaultColorStyle) => {
+			selectedNotes.forEach((n) => {
+				editor.updateShape({
+					id: n.id,
+					type: 'note',
+					props: { color: colorKey },
+				});
+			});
+		},
+		[editor, selectedNotes],
+	);
 
 	/**
 	 * Creates a new sticky note at the viewport center.
@@ -183,6 +209,17 @@ export const BoardToolbar = track(function BoardToolbar({
 					</div>
 				)}
 			</div>
+
+			{selectedNotes.length > 0 && (
+				<>
+					<div className="board-toolbar__divider" />
+					<ColorPicker
+						selectedColor={activeNoteColor}
+						onSelectColor={handleColorChange}
+						size={18}
+					/>
+				</>
+			)}
 		</div>
 	);
 });

@@ -16,6 +16,7 @@ import {
 	useEditor,
 	useEditorComponents,
 } from 'tldraw';
+import { NOTE_COLOR_PALETTE } from '../config/colorPalette';
 import { fetchCoverArt, parseStreamUrl } from '../utils/embedUtils';
 import { toRichText } from '../utils/richText';
 
@@ -39,6 +40,8 @@ interface SubmenuItemDef {
 	label: string;
 	/** Optional FontAwesome icon definition */
 	icon?: IconDefinition;
+	/** Optional custom hex color dot string */
+	colorDot?: string;
 	/** Callback function on selection */
 	onSelect: () => void;
 }
@@ -83,7 +86,7 @@ interface CustomContextMenuProps extends TLUiContextMenuProps {
 
 /**
  * Custom context menu component for tldraw canvas board.
- * Provides right-click operations, smart clipboard pasting, item creation, and track editing.
+ * Provides right-click operations, smart clipboard pasting, item creation, sticky note color editing, and track editing.
  */
 export const CustomContextMenu = track(function CustomContextMenu({
 	children,
@@ -101,6 +104,7 @@ export const CustomContextMenu = track(function CustomContextMenu({
 	const singleSelectedShape =
 		selectedShapes.length === 1 ? selectedShapes[0] : null;
 	const isTrackSelected = singleSelectedShape?.type === 'track';
+	const hasNotesSelected = selectedShapes.some((s) => s.type === 'note');
 
 	/**
 	 * Smart paste handler reading clipboard text content.
@@ -200,6 +204,37 @@ export const CustomContextMenu = track(function CustomContextMenu({
 												);
 											}
 										},
+									},
+								],
+							},
+						]
+					: []),
+				...(hasNotesSelected
+					? [
+							{
+								id: 'note-edit',
+								items: [
+									{
+										id: 'change-note-color',
+										label: t('contextMenu.noteColor'),
+										onSelect: () => {},
+										submenu: NOTE_COLOR_PALETTE.map((c) => ({
+											id: `color-${c.key}`,
+											label: t(`contextMenu.color_${c.key}`),
+											colorDot: c.hex,
+											onSelect: () => {
+												const notes = editor
+													.getSelectedShapes()
+													.filter((s) => s.type === 'note');
+												notes.forEach((note) => {
+													editor.updateShape({
+														id: note.id,
+														type: 'note',
+														props: { color: c.key },
+													});
+												});
+											},
+										})),
 									},
 								],
 							},
@@ -501,12 +536,26 @@ export const CustomContextMenu = track(function CustomContextMenu({
 															closeMenu();
 														}}
 													>
-														{sub.icon && (
+														{sub.colorDot ? (
+															<span
+																className="context-menu__color-dot"
+																style={{
+																	width: 12,
+																	height: 12,
+																	borderRadius: '50%',
+																	backgroundColor: sub.colorDot,
+																	border: '1px solid rgba(0, 0, 0, 0.25)',
+																	display: 'inline-block',
+																	flexShrink: 0,
+																	marginRight: 8,
+																}}
+															/>
+														) : sub.icon ? (
 															<FontAwesomeIcon
 																icon={sub.icon}
 																style={{ width: 14 }}
 															/>
-														)}
+														) : null}
 														<span>{sub.label}</span>
 													</button>
 												))}

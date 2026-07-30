@@ -63,7 +63,15 @@
 		"add": "Add",
 		"stickyNote": "Sticky Note",
 		"trackItem": "Audio Track",
-		"editTrack": "Edit audio track",
+		"editTrack": "Edit Track",
+		"noteColor": "Color",
+		"color_yellow": "Yellow",
+		"color_blue": "Blue",
+		"color_green": "Green",
+		"color_orange": "Orange",
+		"color_red": "Red",
+		"color_violet": "Violet",
+		"color_grey": "Grey",
 		"selectAll": "Select All"
 	},
 	"miniPlayer": {

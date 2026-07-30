@@ -64,6 +64,14 @@
 		"stickyNote": "Post-it",
 		"trackItem": "Piste audio",
 		"editTrack": "Modifier la piste audio",
+		"noteColor": "Couleur",
+		"color_yellow": "Jaune",
+		"color_blue": "Bleu",
+		"color_green": "Vert",
+		"color_orange": "Orange",
+		"color_red": "Rouge",
+		"color_violet": "Violet",
+		"color_grey": "Gris",
 		"selectAll": "Tout sélectionner"
 	},
 	"miniPlayer": {
