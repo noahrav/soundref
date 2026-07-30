@@ -16,7 +16,11 @@ import {
 	getLocalMediaUrl,
 } from '../../../core/utils/mediaUtils';
 import { getOrExtractWaveformPeaks } from '../../../core/utils/WaveformService';
-import { fetchCoverArt } from '../utils/embedUtils';
+import {
+	extractIframeSrc,
+	fetchCoverArt,
+	isValidLocalAudioSource,
+} from '../utils/embedUtils';
 import './TrackFormModal.scss';
 
 /**
@@ -64,12 +68,17 @@ export function TrackFormModal({
 	const { t } = useTranslation();
 	const [title, setTitle] = useState(initialData?.title || '');
 	const [imageUrl, setImageUrl] = useState(initialData?.imageUrl || '');
-	const [audioSource, setAudioSource] = useState(
-		initialData?.audioSource || '',
-	);
 	const [sourceType, setSourceType] = useState<'local' | 'stream'>(
 		initialData?.sourceType || 'local',
 	);
+	const [localAudioSource, setLocalAudioSource] = useState(() =>
+		initialData?.sourceType === 'local' ? initialData?.audioSource || '' : '',
+	);
+	const [streamAudioSource, setStreamAudioSource] = useState(() =>
+		initialData?.sourceType === 'stream' ? initialData?.audioSource || '' : '',
+	);
+	const [localPathError, setLocalPathError] = useState<string | null>(null);
+
 	const [playMode, setPlayMode] = useState<'oneshot' | 'loop'>(
 		initialData?.playMode || 'oneshot',
 	);
@@ -105,9 +114,17 @@ export function TrackFormModal({
 		if (isOpen) {
 			setTitle(initialData?.title || '');
 			setImageUrl(initialData?.imageUrl || '');
-			setAudioSource(initialData?.audioSource || '');
-			setSourceType(initialData?.sourceType || 'local');
+			const type = initialData?.sourceType || 'local';
+			setSourceType(type);
+			if (type === 'local') {
+				setLocalAudioSource(initialData?.audioSource || '');
+				setStreamAudioSource('');
+			} else {
+				setStreamAudioSource(initialData?.audioSource || '');
+				setLocalAudioSource('');
+			}
 			setPlayMode(initialData?.playMode || 'oneshot');
+			setLocalPathError(null);
 			if (
 				initialData?.loopRegion &&
 				initialData.loopRegion.end > initialData.loopRegion.start
@@ -120,19 +137,23 @@ export function TrackFormModal({
 	}, [isOpen, initialData]);
 
 	useEffect(() => {
-		if (sourceType === 'stream' && audioSource) {
-			fetchCoverArt(audioSource).then((cover) => {
+		if (sourceType === 'stream' && streamAudioSource) {
+			fetchCoverArt(streamAudioSource).then((cover) => {
 				if (cover) setImageUrl(cover);
 			});
 		}
-	}, [sourceType, audioSource]);
+	}, [sourceType, streamAudioSource]);
 
 	useEffect(() => {
-		if (sourceType === 'local' && audioSource) {
+		if (
+			sourceType === 'local' &&
+			localAudioSource &&
+			isValidLocalAudioSource(localAudioSource)
+		) {
 			let isMounted = true;
 
 			const loadAudioMetadata = async () => {
-				let src = getLocalMediaUrl(audioSource);
+				let src = getLocalMediaUrl(localAudioSource);
 
 				if (
 					!DesktopBridge.isTauri() &&
@@ -141,7 +162,7 @@ export function TrackFormModal({
 					!src.startsWith('blob:') &&
 					!src.startsWith('data:')
 				) {
-					const blobUrl = await getBlobUrlForFile(audioSource);
+					const blobUrl = await getBlobUrlForFile(localAudioSource);
 					if (blobUrl) src = blobUrl;
 				}
 
@@ -171,7 +192,7 @@ export function TrackFormModal({
 				audio.addEventListener('error', async () => {
 					if (!isMounted) return;
 					if (!src.startsWith('blob:') && DesktopBridge.isTauri()) {
-						const blobUrl = await getBlobUrlForFile(audioSource);
+						const blobUrl = await getBlobUrlForFile(localAudioSource);
 						if (blobUrl) {
 							const fallbackAudio = new Audio(blobUrl);
 							fallbackAudio.preload = 'metadata';
@@ -188,13 +209,16 @@ export function TrackFormModal({
 					}
 				});
 
-				getOrExtractWaveformPeaks(audioSource, src, audioSource, 100).then(
-					(peaks) => {
-						if (isMounted) {
-							setWaveformPeaks(peaks);
-						}
-					},
-				);
+				getOrExtractWaveformPeaks(
+					localAudioSource,
+					src,
+					localAudioSource,
+					100,
+				).then((peaks) => {
+					if (isMounted) {
+						setWaveformPeaks(peaks);
+					}
+				});
 			};
 
 			loadAudioMetadata();
@@ -202,12 +226,21 @@ export function TrackFormModal({
 			return () => {
 				isMounted = false;
 			};
+		} else if (sourceType === 'local') {
+			setWaveformPeaks([]);
 		}
-	}, [sourceType, audioSource, initialData]);
+	}, [sourceType, localAudioSource, initialData]);
 
 	useEffect(() => {
 		const canvas = canvasRef.current;
-		if (!canvas || playMode !== 'loop') return;
+		if (
+			!canvas ||
+			playMode !== 'loop' ||
+			sourceType !== 'local' ||
+			!isValidLocalAudioSource(localAudioSource)
+		) {
+			return;
+		}
 		const ctx = canvas.getContext('2d');
 		if (!ctx) return;
 
@@ -258,7 +291,14 @@ export function TrackFormModal({
 		ctx.fillStyle = '#111111';
 		ctx.fillRect(startX - 1, 0, 2, height);
 		ctx.fillRect(endX - 1, 0, 2, height);
-	}, [playMode, loopRegion, waveformPeaks, audioDuration]);
+	}, [
+		playMode,
+		sourceType,
+		localAudioSource,
+		loopRegion,
+		waveformPeaks,
+		audioDuration,
+	]);
 
 	/**
 	 * Handles pointer down interaction on waveform loop canvas to initiate handle drag.
@@ -366,14 +406,16 @@ export function TrackFormModal({
 		if (file) {
 			const filePath = (file as any).path;
 			if (filePath) {
-				setAudioSource(filePath);
+				setLocalAudioSource(filePath);
 			} else {
 				const reader = new FileReader();
 				reader.onload = (evt) => {
-					if (evt.target?.result) setAudioSource(evt.target.result as string);
+					if (evt.target?.result)
+						setLocalAudioSource(evt.target.result as string);
 				};
 				reader.readAsDataURL(file);
 			}
+			setLocalPathError(null);
 			if (!title) {
 				setTitle(file.name.replace(/\.[^/.]+$/, ''));
 			}
@@ -384,7 +426,8 @@ export function TrackFormModal({
 		if (DesktopBridge.isTauri()) {
 			const picked = await DesktopBridge.pickAudioFile();
 			if (picked) {
-				setAudioSource(picked);
+				setLocalAudioSource(picked);
+				setLocalPathError(null);
 				if (!title) {
 					const fileName = picked
 						.split(/[/\\]/)
@@ -418,16 +461,35 @@ export function TrackFormModal({
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
+		const activeSource =
+			sourceType === 'local'
+				? localAudioSource.trim()
+				: streamAudioSource.trim();
+
+		if (
+			sourceType === 'local' &&
+			activeSource &&
+			!isValidLocalAudioSource(activeSource)
+		) {
+			setLocalPathError(t('trackForm.invalidLocalAudioPath'));
+			return;
+		}
+
 		onSave({
 			title: title.trim() || t('trackForm.defaultTitle'),
-			imageUrl,
-			audioSource,
+			imageUrl: imageUrl.trim(),
+			audioSource: activeSource,
 			sourceType,
-			playMode,
+			playMode: sourceType === 'stream' ? 'oneshot' : playMode,
 			loopRegion,
 		});
 		onClose();
 	};
+
+	const isLocalSourceInvalid =
+		sourceType === 'local' &&
+		localAudioSource.trim() !== '' &&
+		!isValidLocalAudioSource(localAudioSource);
 
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: backdrop close
@@ -516,41 +578,60 @@ export function TrackFormModal({
 					</div>
 
 					<div className="track-modal__field">
-						<label htmlFor="track-audio">
-							{sourceType === 'local'
-								? t('trackForm.audioFileLabel')
-								: t('trackForm.streamUrlLabel')}
-						</label>
-						<div className="track-modal__input-with-btn">
-							<input
-								id="track-audio"
-								type="text"
-								value={audioSource}
-								onChange={(e) => setAudioSource(e.target.value)}
-								placeholder={
-									sourceType === 'local'
-										? t('trackForm.audioFilePlaceholder')
-										: t('trackForm.streamUrlPlaceholder')
-								}
-							/>
-							{sourceType === 'local' && (
-								<button
-									type="button"
-									onClick={handlePickAudio}
-									className="track-modal__browse-btn"
-									title={t('trackForm.browse')}
-								>
-									<FontAwesomeIcon icon={faFolderOpen} />
-								</button>
-							)}
-							<input
-								ref={audioInputRef}
-								type="file"
-								accept="audio/*, .mp3, .wav, .flac, .ogg, .m4a, .aac"
-								style={{ display: 'none' }}
-								onChange={handleAudioFileSelect}
-							/>
-						</div>
+						{sourceType === 'local' ? (
+							<>
+								<label htmlFor="track-audio-local">
+									{t('trackForm.audioFileLabel')}
+								</label>
+								<div className="track-modal__input-with-btn">
+									<input
+										id="track-audio-local"
+										type="text"
+										value={localAudioSource}
+										onChange={(e) => {
+											setLocalAudioSource(e.target.value);
+											if (localPathError) setLocalPathError(null);
+										}}
+										placeholder={t('trackForm.audioFilePlaceholder')}
+									/>
+									<button
+										type="button"
+										onClick={handlePickAudio}
+										className="track-modal__browse-btn"
+										title={t('trackForm.browse')}
+									>
+										<FontAwesomeIcon icon={faFolderOpen} />
+									</button>
+									<input
+										ref={audioInputRef}
+										type="file"
+										accept="audio/*, .mp3, .wav, .flac, .ogg, .m4a, .aac, .aiff, .aif"
+										style={{ display: 'none' }}
+										onChange={handleAudioFileSelect}
+									/>
+								</div>
+								{(localPathError || isLocalSourceInvalid) && (
+									<span className="track-modal__error-msg">
+										{localPathError || t('trackForm.invalidLocalAudioPath')}
+									</span>
+								)}
+							</>
+						) : (
+							<>
+								<label htmlFor="track-audio-stream">
+									{t('trackForm.streamUrlLabel')}
+								</label>
+								<input
+									id="track-audio-stream"
+									type="text"
+									value={streamAudioSource}
+									onChange={(e) =>
+										setStreamAudioSource(extractIframeSrc(e.target.value))
+									}
+									placeholder={t('trackForm.streamUrlPlaceholder')}
+								/>
+							</>
+						)}
 					</div>
 
 					<div className="track-modal__field">
@@ -599,7 +680,7 @@ export function TrackFormModal({
 						)}
 					</div>
 
-					{playMode === 'loop' && (
+					{playMode === 'loop' && sourceType === 'local' && (
 						<div className="track-modal__loop-widget">
 							<div className="track-modal__loop-header">
 								<span className="track-modal__field-label">

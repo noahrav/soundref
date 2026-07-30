@@ -37,6 +37,43 @@ export function extractIframeSrc(input: string): string {
 }
 
 /**
+ * Verifies whether a string represents a valid local audio file path or URL.
+ * Rejects iframe HTML tags, embed codes, and streaming platform domains.
+ * @param source Path or URL string to evaluate.
+ * @returns Boolean indicating if the path is a valid local audio source.
+ */
+export function isValidLocalAudioSource(source: string): boolean {
+	if (!source?.trim()) return false;
+	const clean = source.trim();
+
+	if (
+		clean.includes('<iframe') ||
+		clean.includes('bandcamp.com') ||
+		clean.includes('soundcloud.com') ||
+		clean.includes('youtube.com') ||
+		clean.includes('youtu.be') ||
+		clean.includes('spotify.com') ||
+		clean.includes('deezer.com') ||
+		clean.includes('music.apple.com') ||
+		clean.includes('w.soundcloud.com')
+	) {
+		return false;
+	}
+
+	if (
+		clean.startsWith('blob:') ||
+		clean.startsWith('data:audio') ||
+		clean.startsWith('asset:')
+	) {
+		return true;
+	}
+
+	const audioExtRegex =
+		/\.(mp3|wav|flac|ogg|m4a|aac|opus|weba|wma|aiff|aif)(\?.*)?$/i;
+	return audioExtRegex.test(clean);
+}
+
+/**
  * Parses a web URL or HTML iframe snippet and returns streaming service details.
  * Supports YouTube, SoundCloud, Spotify, Deezer, Apple Music, Bandcamp, and direct HTTP streams.
  * @param url Raw web URL string or iframe HTML snippet.

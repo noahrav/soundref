@@ -102,6 +102,13 @@
     }
   }
 
+  &__error-msg {
+    color: #dc2626;
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin-top: 2px;
+  }
+
   &__input-with-btn {
     display: flex;
     gap: 6px;

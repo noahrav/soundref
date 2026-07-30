@@ -86,6 +86,7 @@
 		"streamLink": "Streaming Link",
 		"audioFileLabel": "Audio File",
 		"audioFilePlaceholder": "Audio file path (.mp3, .wav...)...",
+		"invalidLocalAudioPath": "The specified path is not a valid audio file (.mp3, .wav, .flac, .ogg, .m4a, .aac, .aiff...).",
 		"streamUrlLabel": "<iframe> code or embed link (Bandcamp, SoundCloud, YT...)",
 		"streamUrlPlaceholder": "<iframe ...> or embed URL...",
 		"playModeLabel": "Play Mode",
