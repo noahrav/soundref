@@ -713,6 +713,17 @@ export default function Board({
 		[handleOpenTrackModal],
 	);
 
+	const handleCanvasDoubleClickCapture = useCallback((e: React.MouseEvent) => {
+		const target = e.target as HTMLElement;
+		const isInsideShape = target.closest(
+			'.tl-shape, .section-shape, .track-card, [data-shape-type]',
+		);
+		if (!isInsideShape) {
+			e.stopPropagation();
+			e.preventDefault();
+		}
+	}, []);
+
 	const customContextMenuWithProps = useCallback(
 		(props: any) => (
 			<CustomContextMenu {...props} onOpenTrackModal={handleOpenTrackModal} />
@@ -726,6 +737,7 @@ export default function Board({
 			style={{ position: 'fixed', inset: 0 }}
 			onDragOver={handleDragOver}
 			onDrop={handleDrop}
+			onDoubleClickCapture={handleCanvasDoubleClickCapture}
 		>
 			<Tldraw
 				autoFocus

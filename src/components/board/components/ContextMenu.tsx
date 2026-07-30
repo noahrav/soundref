@@ -136,10 +136,11 @@ export const CustomContextMenu = track(function CustomContextMenu({
 				if (streamResult) {
 					sourceType = 'stream';
 					audioSource = text.trim();
+					const serviceName = streamResult.service || 'Stream';
 					title =
-						streamResult.type.charAt(0).toUpperCase() +
-						streamResult.type.slice(1);
-					imageUrl = (await fetchCoverArt(audioSource, sourceType)) || '';
+						serviceName.charAt(0).toUpperCase() +
+						serviceName.slice(1);
+					imageUrl = (await fetchCoverArt(audioSource)) || '';
 				}
 
 				const newId = createShapeId();
@@ -178,18 +179,6 @@ export const CustomContextMenu = track(function CustomContextMenu({
 			console.warn('[ContextMenu] Clipboard paste failed:', err);
 		}
 	}, [editor, menu]);
-
-	const handleCopyContent = useCallback(() => {
-		actions.copy?.onSelect('context-menu');
-	}, [actions]);
-
-	const handleCutContent = useCallback(() => {
-		actions.cut?.onSelect('context-menu');
-	}, [actions]);
-
-	const handlePasteFromMenu = useCallback(() => {
-		actions.paste?.onSelect('context-menu');
-	}, [actions, editor, menu]);
 
 	const isTrackSelected = singleSelectedShape?.type === 'track';
 	const isSectionSelected = singleSelectedShape?.type === 'section';
@@ -496,10 +485,21 @@ export const CustomContextMenu = track(function CustomContextMenu({
 				) {
 					return;
 				}
+				const point = editor.screenToPage({ x: e.clientX, y: e.clientY });
+				const shapeAtPoint = editor.getShapeAtPoint(point, {
+					hitInside: true,
+					margin: 0,
+				});
+				if (
+					shapeAtPoint &&
+					!editor.getSelectedShapeIds().includes(shapeAtPoint.id)
+				) {
+					editor.select(shapeAtPoint.id);
+				}
 				setMenu({ x: e.clientX, y: e.clientY });
 			}
 		}
-	}, []);
+	}, [editor]);
 
 	const handleContextMenu = useCallback((e: React.MouseEvent) => {
 		e.preventDefault();

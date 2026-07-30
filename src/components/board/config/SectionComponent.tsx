@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useEditor } from 'tldraw';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEditor, useValue } from 'tldraw';
 import { NOTE_COLOR_PALETTE } from './colorPalette';
 import type { TLSectionShape } from './SectionShapeUtil';
 import './SectionComponent.scss';
@@ -18,14 +18,30 @@ interface SectionComponentProps {
  */
 export function SectionComponent({ shape }: SectionComponentProps) {
 	const editor = useEditor();
-	const isEditingShape = editor.getEditingShapeId() === shape.id;
+	const isEditingShape = useValue(
+		'isEditingShape',
+		() => editor.getEditingShapeId() === shape.id,
+		[editor, shape.id],
+	);
 	const [localEditing, setLocalEditing] = useState(false);
 	const isEditingTitle = isEditingShape || localEditing;
 	const [titleInput, setTitleInput] = useState(shape.props.title || 'Section');
+	const inputRef = useRef<HTMLInputElement>(null);
+	const mountTimeRef = useRef<number>(0);
 
 	useEffect(() => {
-		setTitleInput(shape.props.title || 'Section');
+		setTitleInput(shape.props.title);
 	}, [shape.props.title]);
+
+	useLayoutEffect(() => {
+		if (isEditingTitle) {
+			mountTimeRef.current = Date.now();
+			setTitleInput(shape.props.title);
+			if (inputRef.current) {
+				inputRef.current.focus();
+			}
+		}
+	}, [isEditingTitle, shape.props.title]);
 
 	const colorObj =
 		NOTE_COLOR_PALETTE.find((c) => c.key === shape.props.color) ||
@@ -45,6 +61,12 @@ export function SectionComponent({ shape }: SectionComponentProps) {
 	);
 
 	const handleTitleBlur = useCallback(() => {
+		if (Date.now() - mountTimeRef.current < 300) {
+			if (inputRef.current) {
+				inputRef.current.focus();
+			}
+			return;
+		}
 		setLocalEditing(false);
 		if (editor.getEditingShapeId() === shape.id) {
 			editor.setEditingShape(null);
@@ -114,6 +136,7 @@ export function SectionComponent({ shape }: SectionComponentProps) {
 			>
 				{isEditingTitle ? (
 					<input
+						ref={inputRef}
 						type="text"
 						className="section-shape__title-input"
 						style={{
@@ -125,6 +148,7 @@ export function SectionComponent({ shape }: SectionComponentProps) {
 						onKeyDown={handleTitleKeyDown}
 						onPointerDown={(e) => e.stopPropagation()}
 						onClick={(e) => e.stopPropagation()}
+						onDoubleClick={(e) => e.stopPropagation()}
 						// biome-ignore lint/a11y/noAutofocus: edit focus
 						autoFocus
 					/>
