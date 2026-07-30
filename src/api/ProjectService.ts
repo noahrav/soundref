@@ -333,9 +333,7 @@ export class ProjectService {
 				);
 			} else if (
 				p.type === 'SectionItem' ||
-				p.type === 'section' ||
-				p.type === 'GroupItem' ||
-				p.type === 'group_box'
+				p.type === 'section'
 			) {
 				item = new SectionItem(
 					pos,
