@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from 'react';
 import { useEditor, useValue } from 'tldraw';
 import { NOTE_COLOR_PALETTE } from './colorPalette';
 import type { TLSectionShape } from './SectionShapeUtil';

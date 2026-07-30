@@ -284,9 +284,7 @@ export class ProjectStorage {
 								itemJson.scale || 1,
 								itemJson.width || 200,
 							);
-						} else if (
-							itemJson.type === 'SectionItem'
-						) {
+						} else if (itemJson.type === 'SectionItem') {
 							item = new SectionItem(
 								pos,
 								itemJson.title || 'Section',

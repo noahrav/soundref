@@ -331,10 +331,7 @@ export class ProjectService {
 					p.scale || 1,
 					p.width || 200,
 				);
-			} else if (
-				p.type === 'SectionItem' ||
-				p.type === 'section'
-			) {
+			} else if (p.type === 'SectionItem' || p.type === 'section') {
 				item = new SectionItem(
 					pos,
 					p.title || 'Section',

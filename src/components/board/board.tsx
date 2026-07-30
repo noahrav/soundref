@@ -428,6 +428,8 @@ export default function Board({
 							null;
 						let lastSyncedCamera = { ...editor.getCamera() };
 						let lastPageId = editor.getCurrentPageId();
+						let lastEditingShapeId: TLShapeId | null =
+							editor.getEditingShapeId();
 
 						const syncCurrentPageItemsToDisk = () => {
 							if (shapeSyncDebounceTimer) clearTimeout(shapeSyncDebounceTimer);
@@ -504,6 +506,24 @@ export default function Board({
 						};
 
 						editor.store.listen((entry) => {
+							const currentEditingShapeId = editor.getEditingShapeId();
+							if (
+								lastEditingShapeId &&
+								lastEditingShapeId !== currentEditingShapeId
+							) {
+								const shapeToCheck = lastEditingShapeId;
+								setTimeout(() => {
+									const prevShape = editor.getShape(shapeToCheck);
+									if (prevShape && prevShape.type === 'text') {
+										const content = extractNoteContent(prevShape.props);
+										if (!content || content.trim() === '') {
+											editor.deleteShape(shapeToCheck);
+										}
+									}
+								}, 0);
+							}
+							lastEditingShapeId = currentEditingShapeId;
+
 							const currentPageId = editor.getCurrentPageId();
 							const cleanWsId = currentPageId.replace(/^page:/, '');
 

@@ -137,9 +137,7 @@ export const CustomContextMenu = track(function CustomContextMenu({
 					sourceType = 'stream';
 					audioSource = text.trim();
 					const serviceName = streamResult.service || 'Stream';
-					title =
-						serviceName.charAt(0).toUpperCase() +
-						serviceName.slice(1);
+					title = serviceName.charAt(0).toUpperCase() + serviceName.slice(1);
 					imageUrl = (await fetchCoverArt(audioSource)) || '';
 				}
 
@@ -468,38 +466,41 @@ export const CustomContextMenu = track(function CustomContextMenu({
 		}
 	}, []);
 
-	const handlePointerUp = useCallback((e: React.PointerEvent) => {
-		if (e.button === 2 && pointerDownRef.current) {
-			const dist = Math.hypot(
-				e.clientX - pointerDownRef.current.x,
-				e.clientY - pointerDownRef.current.y,
-			);
-			pointerDownRef.current = null;
+	const handlePointerUp = useCallback(
+		(e: React.PointerEvent) => {
+			if (e.button === 2 && pointerDownRef.current) {
+				const dist = Math.hypot(
+					e.clientX - pointerDownRef.current.x,
+					e.clientY - pointerDownRef.current.y,
+				);
+				pointerDownRef.current = null;
 
-			if (dist < 6) {
-				const target = e.target as HTMLElement;
-				if (
-					target.tagName === 'INPUT' ||
-					target.tagName === 'TEXTAREA' ||
-					target.isContentEditable
-				) {
-					return;
+				if (dist < 6) {
+					const target = e.target as HTMLElement;
+					if (
+						target.tagName === 'INPUT' ||
+						target.tagName === 'TEXTAREA' ||
+						target.isContentEditable
+					) {
+						return;
+					}
+					const point = editor.screenToPage({ x: e.clientX, y: e.clientY });
+					const shapeAtPoint = editor.getShapeAtPoint(point, {
+						hitInside: true,
+						margin: 0,
+					});
+					if (
+						shapeAtPoint &&
+						!editor.getSelectedShapeIds().includes(shapeAtPoint.id)
+					) {
+						editor.select(shapeAtPoint.id);
+					}
+					setMenu({ x: e.clientX, y: e.clientY });
 				}
-				const point = editor.screenToPage({ x: e.clientX, y: e.clientY });
-				const shapeAtPoint = editor.getShapeAtPoint(point, {
-					hitInside: true,
-					margin: 0,
-				});
-				if (
-					shapeAtPoint &&
-					!editor.getSelectedShapeIds().includes(shapeAtPoint.id)
-				) {
-					editor.select(shapeAtPoint.id);
-				}
-				setMenu({ x: e.clientX, y: e.clientY });
 			}
-		}
-	}, [editor]);
+		},
+		[editor],
+	);
 
 	const handleContextMenu = useCallback((e: React.MouseEvent) => {
 		e.preventDefault();
