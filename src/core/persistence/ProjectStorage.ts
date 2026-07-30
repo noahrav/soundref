@@ -10,11 +10,19 @@ import { DesktopBridge, type KnownProjectEntry } from './DesktopBridge';
 
 const REGISTRY_KEY = 'soundref_projects_registry';
 
+/**
+ * Interface representing the JSON structure of serialized project data stored in soundref.json.
+ */
 export interface ProjectDataJSON {
+	/** Unique project ID string */
 	id: string;
+	/** Project name string */
 	name: string;
+	/** Folder path of project */
 	path: string;
+	/** Creation ISO timestamp */
 	createdAt: string;
+	/** Array of serialized workspace tab objects */
 	workspaces: Array<{
 		id: string;
 		name: string;
@@ -40,12 +48,25 @@ export interface ProjectDataJSON {
 	}>;
 }
 
+/**
+ * Formats directory path with trailing slash check to soundref.json file path.
+ * @param dirPath Directory path string.
+ * @returns Complete file path string to soundref.json.
+ */
 export function formatSoundrefJsonPath(dirPath: string): string {
 	const cleanPath = dirPath.trim().replace(/[/\\]+$/, '');
 	return cleanPath ? `${cleanPath}/soundref.json` : 'soundref.json';
 }
 
+/**
+ * Persistence manager handling project registry operations, serialization,
+ * desktop file system saving/loading, and web localStorage fallbacks.
+ */
 export class ProjectStorage {
+	/**
+	 * Retrieves the list of known project entries from desktop registry or browser localStorage.
+	 * @returns Promise resolving to an array of KnownProjectEntry objects.
+	 */
 	public static async getKnownProjects(): Promise<KnownProjectEntry[]> {
 		if (DesktopBridge.isTauri()) {
 			const regPath = await DesktopBridge.getRegistryFilePath();
@@ -64,13 +85,11 @@ export class ProjectStorage {
 			}
 		}
 
-		// Fallback to localStorage
 		try {
 			const raw = localStorage.getItem(REGISTRY_KEY);
 			if (!raw) return [];
 			const list = JSON.parse(raw);
 
-			// If running in Tauri and we loaded from localStorage, auto-migrate to desktop registry
 			if (DesktopBridge.isTauri() && list.length > 0) {
 				const regPath = await DesktopBridge.getRegistryFilePath();
 				if (regPath) {
@@ -87,6 +106,10 @@ export class ProjectStorage {
 		}
 	}
 
+	/**
+	 * Saves or updates a project entry in the known projects registry.
+	 * @param project Project instance to register.
+	 */
 	public static async saveProjectToRegistry(project: Project): Promise<void> {
 		const list = await ProjectStorage.getKnownProjects();
 		const index = list.findIndex((p) => p.id === project.id);
@@ -107,6 +130,10 @@ export class ProjectStorage {
 		await ProjectStorage.persistRegistry(list);
 	}
 
+	/**
+	 * Removes a project entry by ID from the known projects registry.
+	 * @param projectId Project ID string.
+	 */
 	public static async removeProjectFromRegistry(
 		projectId: string,
 	): Promise<void> {
@@ -116,6 +143,10 @@ export class ProjectStorage {
 		await ProjectStorage.persistRegistry(list);
 	}
 
+	/**
+	 * Persists updated project registry list to Tauri registry file and localStorage.
+	 * @param list Array of KnownProjectEntry records.
+	 */
 	private static async persistRegistry(
 		list: KnownProjectEntry[],
 	): Promise<void> {
@@ -128,11 +159,14 @@ export class ProjectStorage {
 			}
 		}
 
-		// Always keep localStorage updated as fallback
 		localStorage.setItem(REGISTRY_KEY, jsonStr);
 	}
 
-	// ---- Serialization & File Persistence ----
+	/**
+	 * Serializes a Project instance into a JSON-compatible object structure.
+	 * @param project Project instance to serialize.
+	 * @returns Serialized ProjectDataJSON object.
+	 */
 	public static serializeProject(project: Project): ProjectDataJSON {
 		const workspacesJson = Array.from(project.workspaces.values()).map(
 			(ws) => ({
@@ -195,6 +229,11 @@ export class ProjectStorage {
 		};
 	}
 
+	/**
+	 * Deserializes a ProjectDataJSON object back into a domain Project instance.
+	 * @param json Serialized ProjectDataJSON structure.
+	 * @returns Hydrated Project instance.
+	 */
 	public static deserializeProject(json: ProjectDataJSON): Project {
 		const workspacesMap = new Map<string, Workspace>();
 
@@ -270,13 +309,16 @@ export class ProjectStorage {
 		);
 	}
 
+	/**
+	 * Saves full project data to desktop file system (soundref.json) and localStorage.
+	 * @param project Project instance to persist.
+	 */
 	public static async saveProjectData(project: Project): Promise<void> {
 		await ProjectStorage.saveProjectToRegistry(project);
 
 		const data = ProjectStorage.serializeProject(project);
 		const jsonStr = JSON.stringify(data, null, 2);
 
-		// Save directly to the desktop directory / json file: <projectPath>/soundref.json
 		if (DesktopBridge.isTauri() && project.path) {
 			await DesktopBridge.createDir(project.path);
 			const filePath = formatSoundrefJsonPath(project.path);
@@ -286,16 +328,20 @@ export class ProjectStorage {
 			}
 		}
 
-		// Keep localStorage in sync as backup
 		const key = `soundref_data_${project.id}`;
 		localStorage.setItem(key, jsonStr);
 	}
 
+	/**
+	 * Loads full project data by reading desktop file system or localStorage.
+	 * @param projectId Project ID string.
+	 * @param projectPath Project folder path string.
+	 * @returns Promise resolving to loaded Project instance or null.
+	 */
 	public static async loadProjectData(
 		projectId: string,
 		projectPath: string,
 	): Promise<Project | null> {
-		// 1. Try reading from desktop filesystem (<projectPath>/soundref.json)
 		if (DesktopBridge.isTauri() && projectPath) {
 			const filePath = formatSoundrefJsonPath(projectPath);
 			const content = await DesktopBridge.readTextFile(filePath);
@@ -309,7 +355,6 @@ export class ProjectStorage {
 			}
 		}
 
-		// 2. Fallback to localStorage
 		const raw = localStorage.getItem(`soundref_data_${projectId}`);
 		if (raw) {
 			try {

@@ -5,12 +5,19 @@ import {
 	faRepeat,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { HTMLContainer, useEditor } from 'tldraw';
 import { audioPlayer } from '../../../core/audio/audioPlayerStore';
 import { useMediaUrl } from '../../../core/utils/mediaUtils';
 import type { TLTrackShape } from './TrackShapeUtil';
 
+/**
+ * Renders an animated HTML canvas spectrogram overlay when audio playback is active.
+ * Uses real-time Web Audio API frequency data or smooth fallback visualizer frames.
+ * @param isPlaying Boolean flag indicating if playback is currently active.
+ * @param width Canvas width in pixels.
+ * @param height Canvas height in pixels.
+ */
 function SpectrogramOverlay({
 	isPlaying,
 	width,
@@ -41,13 +48,13 @@ function SpectrogramOverlay({
 
 		const render = (time: number) => {
 			animId = requestAnimationFrame(render);
-			if (time - lastFrameTime < 33) return; // limit to ~30 FPS
+			if (time - lastFrameTime < 33) return;
 			lastFrameTime = time;
 
 			ctx.clearRect(0, 0, width, height);
 
 			const rawData = audioPlayer.getRealtimeFrequencyData();
-			const hasRealData = rawData && rawData.some((v) => v > 0);
+			const hasRealData = rawData?.some((v) => v > 0);
 
 			const gap = 3;
 			const totalGaps = (barCount - 1) * gap;
@@ -62,7 +69,6 @@ function SpectrogramOverlay({
 					norm = rawData[dataIdx] / 255;
 				} else {
 					const timeSec = time / 1000;
-
 					norm = Math.max(
 						0.08,
 						Math.abs(Math.cos(timeSec * 2 + i * 0.35)) * 0.6,
@@ -78,7 +84,6 @@ function SpectrogramOverlay({
 				ctx.fillRect(x, y, barWidth, barHeight);
 			}
 
-			// Draw top caps
 			ctx.fillStyle = '#ffffff';
 			for (let i = 0; i < barCount; i++) {
 				const barHeight = Math.max(4, freqs[i] * (height * 0.75));
@@ -112,16 +117,25 @@ function SpectrogramOverlay({
 	);
 }
 
+/**
+ * Component rendering the visual card representation of a track shape on the tldraw board.
+ * Includes cover image preview, play/pause controls, spectrogram overlay, and double-click editor launcher.
+ * @param shape TLTrackShape object passed from tldraw ShapeUtil.
+ */
 export function TrackCardComponent({ shape }: { shape: TLTrackShape }) {
 	const editor = useEditor();
 
-	const checkState = () => {
+	/**
+	 * Computes whether this track is currently active or playing in the global audio store.
+	 * @returns Object with isPlayingThis and isActiveThis boolean flags.
+	 */
+	const checkState = useCallback(() => {
 		const state = audioPlayer.getState();
 		const isPlayingThis =
 			state.currentTrack?.shapeId === shape.id && state.isPlaying;
 		const isActiveThis = state.currentTrack?.shapeId === shape.id;
 		return { isPlayingThis, isActiveThis };
-	};
+	}, [shape.id]);
 
 	const [playingStatus, setPlayingStatus] = useState(checkState);
 	const {
@@ -150,11 +164,15 @@ export function TrackCardComponent({ shape }: { shape: TLTrackShape }) {
 			});
 		});
 		return unsubscribe;
-	}, [shape.id]);
+	}, [checkState]);
 
 	const isThisTrackPlaying = playingStatus.isPlayingThis;
 	const isThisTrackActive = playingStatus.isActiveThis;
 
+	/**
+	 * Handles click on the track play button.
+	 * @param e Synthetic event.
+	 */
 	const handlePlayClick = (e: React.SyntheticEvent) => {
 		e.stopPropagation();
 		audioPlayer.playTrack({
@@ -170,6 +188,10 @@ export function TrackCardComponent({ shape }: { shape: TLTrackShape }) {
 		});
 	};
 
+	/**
+	 * Handles double click to trigger track edit modal.
+	 * @param e Mouse event.
+	 */
 	const handleDoubleClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
 		e.preventDefault();
@@ -192,6 +214,7 @@ export function TrackCardComponent({ shape }: { shape: TLTrackShape }) {
 				justifyContent: 'center',
 			}}
 		>
+			{/* biome-ignore lint/a11y/noStaticElementInteractions: track card double click */}
 			<div
 				className={`track-card ${isThisTrackActive ? 'track-card--active' : ''}`}
 				onDoubleClick={handleDoubleClick}

@@ -19,37 +19,72 @@ import {
 import { fetchCoverArt, parseStreamUrl } from '../utils/embedUtils';
 import { toRichText } from '../utils/richText';
 
+/**
+ * Screen position coordinates for contextual popup menu.
+ */
 interface MenuPosition {
+	/** Screen X pixel coordinate */
 	x: number;
+	/** Screen Y pixel coordinate */
 	y: number;
 }
 
+/**
+ * Definition for sub-menu items within the context menu.
+ */
 interface SubmenuItemDef {
+	/** Unique sub-item ID */
 	id: string;
+	/** Display label string */
 	label: string;
+	/** Optional FontAwesome icon definition */
 	icon?: IconDefinition;
+	/** Callback function on selection */
 	onSelect: () => void;
 }
 
+/**
+ * Definition for context menu items.
+ */
 interface MenuItemDef {
+	/** Unique item ID */
 	id: string;
+	/** Display label string */
 	label: string;
+	/** Optional keyboard shortcut string representation */
 	shortcut?: string;
+	/** Danger styling flag */
 	danger?: boolean;
+	/** Disabled state flag */
 	disabled?: boolean;
+	/** Callback function on selection */
 	onSelect: () => void;
+	/** Optional array of sub-menu items */
 	submenu?: SubmenuItemDef[];
 }
 
+/**
+ * Group of context menu items separated by horizontal rules.
+ */
 interface MenuGroupDef {
+	/** Unique group ID */
 	id: string;
+	/** Items contained in group */
 	items: MenuItemDef[];
 }
 
+/**
+ * Props for CustomContextMenu component.
+ */
 interface CustomContextMenuProps extends TLUiContextMenuProps {
+	/** Callback function triggered to open track modal */
 	onOpenTrackModal?: (pos?: { x: number; y: number }, editShape?: any) => void;
 }
 
+/**
+ * Custom context menu component for tldraw canvas board.
+ * Provides right-click operations, smart clipboard pasting, item creation, and track editing.
+ */
 export const CustomContextMenu = track(function CustomContextMenu({
 	children,
 	onOpenTrackModal,
@@ -67,6 +102,10 @@ export const CustomContextMenu = track(function CustomContextMenu({
 		selectedShapes.length === 1 ? selectedShapes[0] : null;
 	const isTrackSelected = singleSelectedShape?.type === 'track';
 
+	/**
+	 * Smart paste handler reading clipboard text content.
+	 * Automatically creates Track shapes for audio files or stream links, or Text shapes otherwise.
+	 */
 	const handlePasteContent = useCallback(async () => {
 		try {
 			const text = await navigator.clipboard.readText();
@@ -93,7 +132,6 @@ export const CustomContextMenu = track(function CustomContextMenu({
 					const point = editor.screenToPage(targetScreenPoint);
 					const newId = createShapeId();
 
-					// Check if stream link or audio file path
 					const streamInfo = parseStreamUrl(text);
 					const isAudioFile = text.match(
 						/\.(mp3|wav|ogg|flac|m4a|aac)(\?.*)?$/i,

@@ -3,20 +3,39 @@ import { DesktopBridge } from '../persistence/DesktopBridge';
 import { getBlobUrlForFile, getLocalMediaUrl } from '../utils/mediaUtils';
 import { getOrExtractWaveformPeaks } from '../utils/WaveformService';
 
+/**
+ * Interface representing the data structure for a track currently playing or loaded in the audio player.
+ */
 export interface PlayingTrackData {
+	/** Unique identifier of the track */
 	id: string;
+	/** Optional shape ID associated with the track on the tldraw canvas */
 	shapeId?: string;
+	/** Optional page ID where the track shape resides */
 	pageId?: string;
+	/** Display title of the track */
 	title: string;
+	/** Image cover URL for the track */
 	imageUrl: string;
+	/** Audio source path or streaming web URL */
 	audioSource: string;
+	/** Type of audio source: local file or streaming service */
 	sourceType: 'local' | 'stream';
+	/** Playback mode: oneshot or loop */
 	playMode: 'oneshot' | 'loop';
+	/** Optional loop region start and end boundaries in seconds */
 	loopRegion?: LoopRegion;
 }
 
+/**
+ * Callback function type for audio player state listeners.
+ */
 type AudioPlayerListener = () => void;
 
+/**
+ * Singleton Audio Player Store managing playback state, audio context node graph,
+ * frequency analysis for visualizers, and state change subscriptions.
+ */
 class AudioPlayerStore {
 	private static _instance: AudioPlayerStore;
 
@@ -32,6 +51,9 @@ class AudioPlayerStore {
 	private analyserNode: AnalyserNode | null = null;
 	private mediaElementSource: MediaElementAudioSourceNode | null = null;
 
+	/**
+	 * Private constructor initializing HTMLAudioElement event listeners.
+	 */
 	private constructor() {
 		if (typeof window !== 'undefined') {
 			this.audioElement = new Audio();
@@ -42,7 +64,6 @@ class AudioPlayerStore {
 				if (!this.audioElement) return;
 				this.currentTime = this.audioElement.currentTime;
 
-				// Handle loop region if configured
 				if (this.currentTrack?.playMode === 'loop') {
 					const start = this.currentTrack.loopRegion?.start ?? 0;
 					const end =
@@ -148,11 +169,16 @@ class AudioPlayerStore {
 		}
 	}
 
+	/**
+	 * Initializes Web Audio API Context and AnalyserNode graph for real-time frequency analysis.
+	 */
 	private initAudioContext(): void {
 		if (this.audioCtx || !this.audioElement) return;
 		try {
 			const AudioContextClass =
-				window.AudioContext || (window as any).webkitAudioContext;
+				window.AudioContext ||
+				(window as unknown as { webkitAudioContext: typeof AudioContext })
+					.webkitAudioContext;
 			this.audioCtx = new AudioContextClass();
 			this.analyserNode = this.audioCtx.createAnalyser();
 			this.analyserNode.fftSize = 64;
@@ -166,6 +192,10 @@ class AudioPlayerStore {
 		}
 	}
 
+	/**
+	 * Retrieves real-time byte frequency data from the AnalyserNode.
+	 * @returns Uint8Array containing frequency values ranging from 0 to 255.
+	 */
 	public getRealtimeFrequencyData(): Uint8Array {
 		if (!this.analyserNode) return new Uint8Array(0);
 		const data = new Uint8Array(this.analyserNode.frequencyBinCount);
@@ -173,6 +203,10 @@ class AudioPlayerStore {
 		return data;
 	}
 
+	/**
+	 * Returns the singleton instance of AudioPlayerStore.
+	 * @returns AudioPlayerStore instance.
+	 */
 	public static instance(): AudioPlayerStore {
 		if (!AudioPlayerStore._instance) {
 			AudioPlayerStore._instance = new AudioPlayerStore();
@@ -180,6 +214,11 @@ class AudioPlayerStore {
 		return AudioPlayerStore._instance;
 	}
 
+	/**
+	 * Subscribes a listener callback to audio player state notifications.
+	 * @param listener Function to invoke when state updates.
+	 * @returns Unsubscribe cleanup function.
+	 */
 	public subscribe(listener: AudioPlayerListener): () => void {
 		this.listeners.add(listener);
 		return () => {
@@ -187,10 +226,19 @@ class AudioPlayerStore {
 		};
 	}
 
+	/**
+	 * Notifies all registered listeners of a state change.
+	 */
 	private notify(): void {
-		this.listeners.forEach((l) => l());
+		this.listeners.forEach((l) => {
+			l();
+		});
 	}
 
+	/**
+	 * Gets a snapshot of the current audio player state.
+	 * @returns Object containing currentTrack, isPlaying, currentTime, and duration.
+	 */
 	public getState() {
 		return {
 			currentTrack: this.currentTrack,
@@ -200,6 +248,11 @@ class AudioPlayerStore {
 		};
 	}
 
+	/**
+	 * Starts playing a track or toggles playback if the track is already active.
+	 * Supports both local files and streaming audio sources.
+	 * @param track PlayingTrackData object containing track parameters.
+	 */
 	public async playTrack(track: PlayingTrackData): Promise<void> {
 		if (this.currentTrack?.id === track.id) {
 			this.togglePlayPause();
@@ -210,14 +263,14 @@ class AudioPlayerStore {
 		this.currentTrack = track;
 		this.currentTime = 0;
 
-		if (
-			track.sourceType === 'local' &&
-			track.audioSource &&
-			this.audioElement
-		) {
-			let src = getLocalMediaUrl(track.audioSource);
+		if (this.audioElement && track.audioSource) {
+			let src =
+				track.sourceType === 'local'
+					? getLocalMediaUrl(track.audioSource)
+					: track.audioSource;
 
 			if (
+				track.sourceType === 'local' &&
 				!DesktopBridge.isTauri() &&
 				!src.startsWith('http://') &&
 				!src.startsWith('https://') &&
@@ -228,59 +281,79 @@ class AudioPlayerStore {
 				if (blobUrl) src = blobUrl;
 			}
 
-			if (this.audioElement.src !== src) {
-				this.audioElement.src = src;
-				this.audioElement.load();
-			}
+			const isDirectPlayable =
+				track.sourceType === 'local' ||
+				src.startsWith('http://') ||
+				src.startsWith('https://') ||
+				src.startsWith('blob:') ||
+				src.startsWith('data:');
 
-			if (this.audioCtx && this.audioCtx.state === 'suspended') {
-				this.audioCtx.resume().catch(() => {});
-			}
+			if (isDirectPlayable) {
+				if (this.audioElement.src !== src) {
+					this.audioElement.src = src;
+					this.audioElement.load();
+				}
 
-			this.audioElement
-				.play()
-				.then(() => {
-					this.isPlaying = true;
-					this.notify();
-				})
-				.catch(async (err) => {
-					console.warn(
-						'[AudioPlayer] Could not play local audio with primary src:',
-						err,
-					);
-					if (DesktopBridge.isTauri() && !src.startsWith('blob:')) {
-						const blobUrl = await getBlobUrlForFile(track.audioSource);
-						if (blobUrl && this.audioElement) {
-							this.audioElement.src = blobUrl;
-							this.audioElement.load();
-							try {
-								await this.audioElement.play();
-								this.isPlaying = true;
-								this.notify();
-								return;
-							} catch (fallbackErr) {
-								console.error(
-									'[AudioPlayer] Blob fallback play failed:',
-									fallbackErr,
-								);
+				if (this.audioCtx && this.audioCtx.state === 'suspended') {
+					this.audioCtx.resume().catch(() => {});
+				}
+
+				this.audioElement
+					.play()
+					.then(() => {
+						this.isPlaying = true;
+						this.notify();
+					})
+					.catch(async (err) => {
+						console.warn(
+							'[AudioPlayer] Direct play attempt failed or iframe embed required:',
+							err,
+						);
+						if (
+							track.sourceType === 'local' &&
+							DesktopBridge.isTauri() &&
+							!src.startsWith('blob:')
+						) {
+							const blobUrl = await getBlobUrlForFile(track.audioSource);
+							if (blobUrl && this.audioElement) {
+								this.audioElement.src = blobUrl;
+								this.audioElement.load();
+								try {
+									await this.audioElement.play();
+									this.isPlaying = true;
+									this.notify();
+									return;
+								} catch (fallbackErr) {
+									console.error(
+										'[AudioPlayer] Blob fallback play failed:',
+										fallbackErr,
+									);
+								}
 							}
 						}
-					}
-					this.isPlaying = false;
-					this.notify();
-				});
+						this.isPlaying = true;
+						this.notify();
+					});
 
-			this.extractWaveformPeaks(track.id, track.audioSource, src);
+				if (track.sourceType === 'local') {
+					this.extractWaveformPeaks(track.id, track.audioSource, src);
+				}
+			} else {
+				this.isPlaying = true;
+				this.notify();
+			}
 		} else {
-			// Streaming iframe / link
 			this.isPlaying = true;
 			this.notify();
 		}
 	}
 
+	/**
+	 * Toggles playback between play and pause states for the currently active track.
+	 */
 	public togglePlayPause(): void {
 		if (!this.currentTrack) return;
-		if (this.currentTrack.sourceType === 'local' && this.audioElement) {
+		if (this.audioElement?.src) {
 			if (this.audioCtx && this.audioCtx.state === 'suspended') {
 				this.audioCtx.resume().catch(() => {});
 			}
@@ -295,6 +368,9 @@ class AudioPlayerStore {
 		}
 	}
 
+	/**
+	 * Stops audio playback and resets player state.
+	 */
 	public stop(): void {
 		if (this.audioElement) {
 			this.audioElement.pause();
@@ -307,18 +383,33 @@ class AudioPlayerStore {
 		this.notify();
 	}
 
+	/**
+	 * Seeks playback position to specified timestamp in seconds.
+	 * @param time Target playback time in seconds.
+	 */
 	public seekTo(time: number): void {
-		if (this.audioElement && this.currentTrack?.sourceType === 'local') {
+		if (this.audioElement) {
 			this.audioElement.currentTime = time;
 			this.currentTime = time;
 			this.notify();
 		}
 	}
 
+	/**
+	 * Retrieves cached waveform peaks for a track.
+	 * @param trackId Unique ID of the track.
+	 * @returns Array of peak numerical values or undefined if not cached.
+	 */
 	public getPeaks(trackId: string): number[] | undefined {
 		return this.audioPeaksMap.get(trackId);
 	}
 
+	/**
+	 * Asynchronously extracts waveform peaks for visual presentation.
+	 * @param trackId Unique ID of the track.
+	 * @param path File system path of the audio file.
+	 * @param src Resolved URL source of the audio.
+	 */
 	private extractWaveformPeaks(
 		trackId: string,
 		path: string,
@@ -333,4 +424,7 @@ class AudioPlayerStore {
 	}
 }
 
+/**
+ * Global instance export of AudioPlayerStore singleton.
+ */
 export const audioPlayer = AudioPlayerStore.instance();

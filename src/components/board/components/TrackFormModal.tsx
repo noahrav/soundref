@@ -18,22 +18,42 @@ import { getOrExtractWaveformPeaks } from '../../../core/utils/WaveformService';
 import { fetchCoverArt } from '../utils/embedUtils';
 import './TrackFormModal.scss';
 
+/**
+ * Form data payload for creating or editing track shapes.
+ */
 export interface TrackFormData {
+	/** Track title */
 	title: string;
+	/** Cover image URL or file path */
 	imageUrl: string;
+	/** Audio source file path or streaming web URL */
 	audioSource: string;
+	/** Audio source classification: local or stream */
 	sourceType: 'local' | 'stream';
+	/** Playback mode: oneshot or loop */
 	playMode: 'oneshot' | 'loop';
+	/** Loop region timestamp boundaries in seconds */
 	loopRegion: LoopRegion;
 }
 
+/**
+ * Props for TrackFormModal component.
+ */
 interface TrackFormModalProps {
+	/** Modal visibility flag */
 	isOpen: boolean;
+	/** Initial track form data when editing */
 	initialData?: Partial<TrackFormData>;
+	/** Save callback function */
 	onSave: (data: TrackFormData) => void;
+	/** Close modal callback function */
 	onClose: () => void;
 }
 
+/**
+ * TrackFormModal component for creating and editing audio track properties,
+ * cover art, streaming/local sources, and interactive waveform loop region boundaries.
+ */
 export function TrackFormModal({
 	isOpen,
 	initialData,
@@ -89,7 +109,6 @@ export function TrackFormModal({
 		}
 	}, [isOpen, initialData]);
 
-	// Auto-fetch cover art for stream URLs
 	useEffect(() => {
 		if (sourceType === 'stream' && audioSource) {
 			fetchCoverArt(audioSource).then((cover) => {
@@ -98,7 +117,6 @@ export function TrackFormModal({
 		}
 	}, [sourceType, audioSource]);
 
-	// Extract duration and waveform peaks for local audio files
 	useEffect(() => {
 		if (sourceType === 'local' && audioSource) {
 			let isMounted = true;
@@ -122,7 +140,7 @@ export function TrackFormModal({
 				audio.preload = 'metadata';
 				audio.addEventListener('loadedmetadata', () => {
 					if (!isMounted) return;
-					if (audio.duration && !isNaN(audio.duration)) {
+					if (audio.duration && !Number.isNaN(audio.duration)) {
 						const dur = Math.round(audio.duration * 100) / 100;
 						setAudioDuration(dur);
 						setLoopRegion((prev) => {
@@ -151,7 +169,7 @@ export function TrackFormModal({
 								if (
 									isMounted &&
 									fallbackAudio.duration &&
-									!isNaN(fallbackAudio.duration)
+									!Number.isNaN(fallbackAudio.duration)
 								) {
 									setAudioDuration(fallbackAudio.duration);
 								}
@@ -160,7 +178,6 @@ export function TrackFormModal({
 					}
 				});
 
-				// Dynamic non-blocking peak extraction
 				getOrExtractWaveformPeaks(audioSource, src, audioSource, 100).then(
 					(peaks) => {
 						if (isMounted) {
@@ -176,9 +193,8 @@ export function TrackFormModal({
 				isMounted = false;
 			};
 		}
-	}, [sourceType, audioSource]);
+	}, [sourceType, audioSource, initialData]);
 
-	// Draw loop region waveform canvas
 	useEffect(() => {
 		const canvas = canvasRef.current;
 		if (!canvas || playMode !== 'loop') return;
@@ -203,7 +219,6 @@ export function TrackFormModal({
 		const startX = width * startRatio;
 		const endX = width * endRatio;
 
-		// Draw unselected background peaks
 		const barWidth = width / peaks.length;
 		peaks.forEach((peak, i) => {
 			const barHeight = peak * (height * 0.7);
@@ -213,7 +228,6 @@ export function TrackFormModal({
 			ctx.fillRect(x, y, Math.max(1, barWidth - 1), barHeight);
 		});
 
-		// Draw highlighted loop region
 		ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
 		ctx.fillRect(startX, 0, endX - startX, height);
 
@@ -227,7 +241,6 @@ export function TrackFormModal({
 			}
 		});
 
-		// Draw start and end handles
 		ctx.fillStyle = '#ffffff';
 		ctx.fillRect(startX - 3, 0, 6, height);
 		ctx.fillRect(endX - 3, 0, 6, height);
@@ -237,7 +250,10 @@ export function TrackFormModal({
 		ctx.fillRect(endX - 1, 0, 2, height);
 	}, [playMode, loopRegion, waveformPeaks, audioDuration]);
 
-	// Draggable handles logic on canvas
+	/**
+	 * Handles pointer down interaction on waveform loop canvas to initiate handle drag.
+	 * @param e PointerEvent on canvas.
+	 */
 	const handleCanvasPointerDown = (
 		e: React.PointerEvent<HTMLCanvasElement>,
 	) => {
@@ -275,6 +291,10 @@ export function TrackFormModal({
 		}
 	};
 
+	/**
+	 * Handles pointer move interaction on waveform loop canvas to adjust handle position.
+	 * @param e PointerEvent on canvas.
+	 */
 	const handleCanvasPointerMove = (
 		e: React.PointerEvent<HTMLCanvasElement>,
 	) => {
@@ -303,6 +323,9 @@ export function TrackFormModal({
 		}
 	};
 
+	/**
+	 * Handles pointer up event releasing drag state.
+	 */
 	const handleCanvasPointerUp = () => {
 		setActiveDragHandle(null);
 	};
@@ -397,7 +420,11 @@ export function TrackFormModal({
 	};
 
 	return (
+		// biome-ignore lint/a11y/noStaticElementInteractions: backdrop close
+		// biome-ignore lint/a11y/useKeyWithClickEvents: backdrop close
 		<div className="track-modal-backdrop" onClick={onClose}>
+			{/* biome-ignore lint/a11y/noStaticElementInteractions: stop propagation */}
+			{/* biome-ignore lint/a11y/useKeyWithClickEvents: stop propagation */}
 			<div className="track-modal" onClick={(e) => e.stopPropagation()}>
 				<div className="track-modal__header">
 					<h3>
@@ -415,7 +442,6 @@ export function TrackFormModal({
 				</div>
 
 				<form onSubmit={handleSubmit} className="track-modal__form">
-					{/* Title */}
 					<div className="track-modal__field">
 						<label htmlFor="track-title">{t('trackForm.titleLabel')}</label>
 						<input
@@ -424,11 +450,9 @@ export function TrackFormModal({
 							value={title}
 							onChange={(e) => setTitle(e.target.value)}
 							placeholder={t('trackForm.titlePlaceholder')}
-							autoFocus
 						/>
 					</div>
 
-					{/* Cover Image */}
 					<div className="track-modal__field">
 						<label htmlFor="track-image">{t('trackForm.coverLabel')}</label>
 						<div className="track-modal__input-with-btn">
@@ -457,9 +481,10 @@ export function TrackFormModal({
 						</div>
 					</div>
 
-					{/* Source Type Toggle */}
 					<div className="track-modal__field">
-						<label>{t('trackForm.sourceTypeLabel')}</label>
+						<span className="track-modal__field-label">
+							{t('trackForm.sourceTypeLabel')}
+						</span>
 						<div className="track-modal__toggle-group">
 							<button
 								type="button"
@@ -480,7 +505,6 @@ export function TrackFormModal({
 						</div>
 					</div>
 
-					{/* Audio Source Input */}
 					<div className="track-modal__field">
 						<label htmlFor="track-audio">
 							{sourceType === 'local'
@@ -519,9 +543,10 @@ export function TrackFormModal({
 						</div>
 					</div>
 
-					{/* Play Mode Toggle */}
 					<div className="track-modal__field">
-						<label>{t('trackForm.playModeLabel')}</label>
+						<span className="track-modal__field-label">
+							{t('trackForm.playModeLabel')}
+						</span>
 						<div className="track-modal__toggle-group">
 							<button
 								type="button"
@@ -541,11 +566,12 @@ export function TrackFormModal({
 						</div>
 					</div>
 
-					{/* Loop Region Selection Widget */}
 					{playMode === 'loop' && (
 						<div className="track-modal__loop-widget">
 							<div className="track-modal__loop-header">
-								<label>{t('trackForm.loopRegionLabel')}</label>
+								<span className="track-modal__field-label">
+									{t('trackForm.loopRegionLabel')}
+								</span>
 								<div className="track-modal__loop-actions">
 									<button
 										type="button"

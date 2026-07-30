@@ -4,8 +4,13 @@ const peakCache = new Map<string, number[]>();
 const inFlightRequests = new Map<string, Promise<number[]>>();
 
 /**
- * Dynamically extract waveform peaks for audio files without blocking the main thread.
- * Heavy audio files are processed asynchronously and results are cached.
+ * Dynamically extracts or retrieves cached waveform peak values for an audio source.
+ * Prevents UI lag by slicing large buffers and running decoding asynchronously.
+ * @param key Unique cache key (usually track shape ID).
+ * @param src Resolved URL source string of the audio.
+ * @param filePath Optional file system path for Tauri desktop binary file reading.
+ * @param sampleCount Number of peak samples to generate across the audio duration.
+ * @returns Promise resolving to an array of normalized numerical peak values (0 to 1).
  */
 export async function getOrExtractWaveformPeaks(
 	key: string,
@@ -15,46 +20,40 @@ export async function getOrExtractWaveformPeaks(
 ): Promise<number[]> {
 	if (!key) return generateFallbackPeaks(sampleCount);
 
-	if (peakCache.has(key)) {
-		return peakCache.get(key)!;
+	const cachedPeaks = peakCache.get(key);
+	if (cachedPeaks) {
+		return cachedPeaks;
 	}
 
-	if (inFlightRequests.has(key)) {
-		return inFlightRequests.get(key)!;
+	const inFlight = inFlightRequests.get(key);
+	if (inFlight) {
+		return inFlight;
 	}
 
 	const task = (async () => {
 		try {
 			let arrayBuffer: ArrayBuffer | null = null;
 
-			// 1. Try to fetch a partial or full arrayBuffer without blocking
 			try {
 				const response = await fetch(src);
 				if (response.ok) {
-					// Cap buffer processing to 30MB to prevent browser UI freezing on massive FLAC/WAV files
 					const blob = await response.blob();
 					if (blob.size <= 35_000_000) {
 						arrayBuffer = await blob.arrayBuffer();
 					} else {
-						// For very heavy files (>35MB), slice the first 15MB for fast non-blocking peak estimation
 						const slice = blob.slice(0, 15_000_000);
 						arrayBuffer = await slice.arrayBuffer();
 					}
 				}
-			} catch {
-				// Fetch failed
-			}
+			} catch {}
 
-			// 2. Fallback to desktop bridge reading if fetch failed
 			if (!arrayBuffer && filePath && DesktopBridge.isTauri()) {
 				try {
 					arrayBuffer = await DesktopBridge.readFileBinary(filePath);
 					if (arrayBuffer && arrayBuffer.byteLength > 35_000_000) {
 						arrayBuffer = arrayBuffer.slice(0, 15_000_000);
 					}
-				} catch {
-					// Read failed
-				}
+				} catch {}
 			}
 
 			if (!arrayBuffer || arrayBuffer.byteLength === 0) {
@@ -63,7 +62,6 @@ export async function getOrExtractWaveformPeaks(
 				return fallback;
 			}
 
-			// 3. Decode audio data in background idle frame to avoid UI lag
 			const peaks = await decodeAndExtractPeaksNonBlocking(
 				arrayBuffer,
 				sampleCount,
@@ -71,7 +69,10 @@ export async function getOrExtractWaveformPeaks(
 			peakCache.set(key, peaks);
 			return peaks;
 		} catch (err) {
-			console.warn('[WaveformService] Could not decode peaks, using fallback:', err);
+			console.warn(
+				'[WaveformService] Could not decode peaks, using fallback:',
+				err,
+			);
 			const fallback = generateFallbackPeaks(sampleCount);
 			peakCache.set(key, fallback);
 			return fallback;
@@ -84,16 +85,23 @@ export async function getOrExtractWaveformPeaks(
 	return task;
 }
 
+/**
+ * Decodes raw AudioBuffer binary data on a non-blocking timeout frame.
+ * @param arrayBuffer Raw ArrayBuffer of audio content.
+ * @param sampleCount Number of samples to compute.
+ * @returns Promise resolving to an array of normalized peak values.
+ */
 function decodeAndExtractPeaksNonBlocking(
 	arrayBuffer: ArrayBuffer,
 	sampleCount: number,
 ): Promise<number[]> {
 	return new Promise((resolve) => {
-		// Yield to main thread first so UI updates immediately
 		setTimeout(async () => {
 			try {
 				const AudioContextClass =
-					window.AudioContext || (window as any).webkitAudioContext;
+					window.AudioContext ||
+					(window as unknown as { webkitAudioContext: typeof AudioContext })
+						.webkitAudioContext;
 				const audioCtx = new AudioContextClass();
 
 				const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
@@ -125,6 +133,11 @@ function decodeAndExtractPeaksNonBlocking(
 	});
 }
 
+/**
+ * Generates synthetic mathematical waveform peak values as a fallback.
+ * @param count Number of peak samples to generate.
+ * @returns Array of synthetic peak values.
+ */
 export function generateFallbackPeaks(count: number): number[] {
 	return Array.from({ length: count }, (_, i) => Math.sin(i * 0.2) * 0.4 + 0.5);
 }

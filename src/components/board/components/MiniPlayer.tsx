@@ -11,8 +11,13 @@ import { useTranslation } from 'react-i18next';
 import { useEditor } from 'tldraw';
 import { audioPlayer } from '../../../core/audio/audioPlayerStore';
 import { useMediaUrl } from '../../../core/utils/mediaUtils';
+import { parseStreamUrl } from '../utils/embedUtils';
 import './MiniPlayer.scss';
 
+/**
+ * MiniPlayer component rendering global floating playback controls,
+ * loop progress bar, location navigation, and iframe streaming embeds.
+ */
 export function MiniPlayer() {
 	const { t } = useTranslation();
 	const editor = useEditor();
@@ -45,18 +50,30 @@ export function MiniPlayer() {
 		? Math.max(0, Math.min(displayDuration, currentTime - effectiveStart))
 		: currentTime;
 
+	const streamInfo = currentTrack.audioSource
+		? parseStreamUrl(currentTrack.audioSource)
+		: { isStream: false };
+
+	/**
+	 * Toggles play and pause state for the active track.
+	 */
 	const handleTogglePlayPause = () => {
 		audioPlayer.togglePlayPause();
 	};
 
+	/**
+	 * Stops audio playback and closes active track state.
+	 */
 	const handleStop = () => {
 		audioPlayer.stop();
 	};
 
+	/**
+	 * Centers the tldraw camera view onto the canvas track card.
+	 */
 	const handleGoToTrack = () => {
 		if (!currentTrack?.shapeId) return;
 
-		// 1. Switch to workspace tab/page if needed
 		if (currentTrack.pageId) {
 			const currentPageId = editor.getCurrentPageId();
 			if (currentPageId !== currentTrack.pageId) {
@@ -64,7 +81,6 @@ export function MiniPlayer() {
 			}
 		}
 
-		// 2. Select shape and center camera on shape
 		const shapeId = currentTrack.shapeId as any;
 		const shape = editor.getShape(shapeId);
 		if (shape) {
@@ -83,14 +99,23 @@ export function MiniPlayer() {
 		}
 	};
 
+	/**
+	 * Handles manual slider seek interactions.
+	 * @param e Change event from the range input element.
+	 */
 	const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const timeVal = parseFloat(e.target.value);
 		const targetTime = isLoop ? effectiveStart + timeVal : timeVal;
 		audioPlayer.seekTo(targetTime);
 	};
 
+	/**
+	 * Formats raw seconds into human readable M:SS string representation.
+	 * @param secs Seconds timestamp.
+	 * @returns Formatted time string.
+	 */
 	const formatTime = (secs: number) => {
-		if (isNaN(secs) || secs < 0) return '0:00';
+		if (Number.isNaN(secs) || secs < 0) return '0:00';
 		const m = Math.floor(secs / 60);
 		const s = Math.floor(secs % 60);
 		return `${m}:${s < 10 ? '0' : ''}${s}`;
@@ -170,6 +195,20 @@ export function MiniPlayer() {
 						value={displayTime}
 						onChange={handleSeek}
 						className="mini-player__progress"
+					/>
+				</div>
+			)}
+
+			{streamInfo.isStream && streamInfo.embedUrl && (
+				<div className="mini-player__stream-embed">
+					<iframe
+						src={streamInfo.embedUrl}
+						title={currentTrack.title}
+						width="100%"
+						height="120"
+						frameBorder="0"
+						allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+						allowFullScreen
 					/>
 				</div>
 			)}

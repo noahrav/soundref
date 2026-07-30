@@ -9,11 +9,19 @@ import { useTranslation } from 'react-i18next';
 import { PageRecordType, type TLPageId, track, useEditor } from 'tldraw';
 import { ProjectService } from '../../../api/ProjectService';
 
+/**
+ * Props for PageTabs component.
+ */
 interface PageTabsProps {
+	/** Optional active project ID */
 	projectId?: string;
+	/** Callback function to return to project list screen */
 	onBackToProjects?: () => void;
 }
 
+/**
+ * Navigation bar component displaying workspace page tabs, creation button, inline renaming, and deletion controls.
+ */
 export const PageTabs = track(function PageTabs({
 	projectId,
 	onBackToProjects,
@@ -28,6 +36,9 @@ export const PageTabs = track(function PageTabs({
 	const [renameValue, setRenameValue] = useState('');
 	const inputRef = useRef<HTMLInputElement>(null);
 
+	/**
+	 * Adds a new workspace page tab to the tldraw editor and project service.
+	 */
 	const handleAddPage = useCallback(async () => {
 		const name = t('board.defaultWorkspaceName', { number: pages.length + 1 });
 
@@ -46,11 +57,17 @@ export const PageTabs = track(function PageTabs({
 		}
 	}, [editor, pages.length, projectId, service, t]);
 
+	/**
+	 * Triggers inline page tab renaming mode.
+	 */
 	const startRename = useCallback((pageId: TLPageId, currentName: string) => {
 		setRenamingId(pageId);
 		setRenameValue(currentName);
 	}, []);
 
+	/**
+	 * Commits inline rename changes to the page record and project storage.
+	 */
 	const commitRename = useCallback(async () => {
 		if (renamingId && renameValue.trim()) {
 			const newName = renameValue.trim();
@@ -69,6 +86,9 @@ export const PageTabs = track(function PageTabs({
 		setRenamingId(null);
 	}, [editor, renamingId, renameValue, projectId, service]);
 
+	/**
+	 * Deletes a workspace page tab.
+	 */
 	const handleDeletePage = useCallback(
 		async (e: React.MouseEvent | React.KeyboardEvent, pageId: TLPageId) => {
 			e.stopPropagation();

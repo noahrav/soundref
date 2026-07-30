@@ -14,10 +14,17 @@ import { createShapeId, track, useEditor } from 'tldraw';
 import { toRichText } from '../utils/richText';
 import './BoardToolbar.scss';
 
+/**
+ * Props for BoardToolbar component.
+ */
 interface BoardToolbarProps {
+	/** Callback function triggered to open track creation modal */
 	onOpenTrackModal?: (pos?: { x: number; y: number }) => void;
 }
 
+/**
+ * Floating toolbar component for tool switching (select, hand) and item creation (Text, Sticky Note, Track).
+ */
 export const BoardToolbar = track(function BoardToolbar({
 	onOpenTrackModal,
 }: BoardToolbarProps) {
@@ -27,6 +34,9 @@ export const BoardToolbar = track(function BoardToolbar({
 	const [showAddMenu, setShowAddMenu] = useState(false);
 	const addMenuRef = useRef<HTMLDivElement>(null);
 
+	/**
+	 * Creates a new sticky note at the viewport center.
+	 */
 	const handleAddStickyNote = useCallback(() => {
 		const viewportBounds = editor.getViewportPageBounds();
 		const center = viewportBounds.center;
@@ -48,6 +58,9 @@ export const BoardToolbar = track(function BoardToolbar({
 		setShowAddMenu(false);
 	}, [editor]);
 
+	/**
+	 * Creates a new text block at the viewport center.
+	 */
 	const handleAddTextItem = useCallback(() => {
 		const viewportBounds = editor.getViewportPageBounds();
 		const center = viewportBounds.center;
@@ -69,6 +82,9 @@ export const BoardToolbar = track(function BoardToolbar({
 		setShowAddMenu(false);
 	}, [editor]);
 
+	/**
+	 * Opens track modal to create a new track shape.
+	 */
 	const handleAddTrackItem = useCallback(() => {
 		const viewportBounds = editor.getViewportPageBounds();
 		const center = viewportBounds.center;

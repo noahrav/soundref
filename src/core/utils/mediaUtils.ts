@@ -1,6 +1,11 @@
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { DesktopBridge } from '../persistence/DesktopBridge';
 
+/**
+ * Returns the MIME type string corresponding to a file extension.
+ * @param path File path string.
+ * @returns MIME type string.
+ */
 export function getMimeType(path: string): string {
 	const ext = path.split('.').pop()?.toLowerCase() || '';
 	switch (ext) {
@@ -31,6 +36,12 @@ export function getMimeType(path: string): string {
 	}
 }
 
+/**
+ * Resolves a file system path or web URL into a browser loadable asset URL.
+ * Automatically converts local Tauri desktop file paths using convertFileSrc.
+ * @param path Raw file system path or URL string.
+ * @returns Resolved media URL string.
+ */
 export function getLocalMediaUrl(path: string | undefined | null): string {
 	if (!path) return '';
 
@@ -65,18 +76,34 @@ export function getLocalMediaUrl(path: string | undefined | null): string {
 	return cleanPath;
 }
 
+/**
+ * Asynchronously resolves a media path to a usable URL string.
+ * @param path Raw media path or URL.
+ * @returns Promise resolving to the usable URL string.
+ */
 export function resolveMediaUrl(
 	path: string | undefined | null,
 ): Promise<string> {
 	return Promise.resolve(getLocalMediaUrl(path));
 }
 
+/**
+ * React hook returning resolved loadable media URL for a given input path.
+ * @param url Raw media path or URL.
+ * @returns Loadable media URL string.
+ */
 export function useMediaUrl(url: string | undefined | null): string {
 	return getLocalMediaUrl(url);
 }
 
 const blobUrlCache = new Map<string, string>();
 
+/**
+ * Reads binary data for local desktop files and creates an in-memory Blob URL.
+ * Useful for bypassing CORS or Tauri protocol restrictions for audio elements.
+ * @param path File system path string.
+ * @returns Promise resolving to created Blob URL or null.
+ */
 export async function getBlobUrlForFile(
 	path: string | undefined | null,
 ): Promise<string | null> {

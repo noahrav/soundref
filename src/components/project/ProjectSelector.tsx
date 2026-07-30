@@ -14,10 +14,20 @@ import type { KnownProjectEntry } from '../../core/persistence/DesktopBridge';
 import { DesktopBridge } from '../../core/persistence/DesktopBridge';
 import './ProjectSelector.scss';
 
+/**
+ * Props for ProjectSelector component.
+ */
 interface ProjectSelectorProps {
+	/** Callback invoked when a project is selected or created */
 	onSelectProject: (project: Project | KnownProjectEntry) => void;
 }
 
+/**
+ * Helper function joining base parent directory and project name safely.
+ * @param baseDir Parent folder path string.
+ * @param name Project folder name string.
+ * @returns Joined directory path string.
+ */
 function combinePathAndName(baseDir: string, name: string): string {
 	const cleanBase = baseDir.trim().replace(/[/\\]+$/, '');
 	const cleanName = name.trim();
@@ -26,6 +36,10 @@ function combinePathAndName(baseDir: string, name: string): string {
 	return `${cleanBase}/${cleanName}`;
 }
 
+/**
+ * ProjectSelector screen component allowing users to create new projects,
+ * open existing folders, filter known projects, and launch project workspaces.
+ */
 export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
 	const { t } = useTranslation();
 	const service = ProjectService.instance();
@@ -40,6 +54,9 @@ export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
 	const [newProjectPath, setNewProjectPath] = useState('./');
 	const [isCreating, setIsCreating] = useState(false);
 
+	/**
+	 * Loads known projects from storage registry.
+	 */
 	const loadProjects = useCallback(async () => {
 		try {
 			setLoading(true);
@@ -58,15 +75,24 @@ export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
 		void loadProjects();
 	}, [loadProjects]);
 
+	/**
+	 * Handles project name input change and updates target path.
+	 */
 	const handleNameChange = (name: string) => {
 		setNewProjectName(name);
 		setNewProjectPath(combinePathAndName(baseParentPath, name));
 	};
 
+	/**
+	 * Handles direct target path editing.
+	 */
 	const handlePathChange = (path: string) => {
 		setNewProjectPath(path);
 	};
 
+	/**
+	 * Opens native desktop folder picker for project creation destination.
+	 */
 	const handlePickFolder = async () => {
 		const selectedFolder = await DesktopBridge.pickFolder();
 		if (selectedFolder) {
@@ -75,6 +101,9 @@ export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
 		}
 	};
 
+	/**
+	 * Opens existing project folder from desktop disk.
+	 */
 	const handleOpenFolder = async () => {
 		const selectedFolder = await DesktopBridge.pickFolder();
 		if (selectedFolder) {
@@ -91,6 +120,9 @@ export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
 		}
 	};
 
+	/**
+	 * Handles submission of new project creation form.
+	 */
 	const handleCreateProject = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!newProjectName.trim()) return;
@@ -118,6 +150,9 @@ export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
 		}
 	};
 
+	/**
+	 * Handles project removal from history.
+	 */
 	const handleDeleteProject = async (
 		e: React.MouseEvent | React.KeyboardEvent,
 		project: KnownProjectEntry,
@@ -252,12 +287,18 @@ export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
 				) : (
 					<div className="project-selector__grid">
 						{filteredProjects.map((project) => (
-							// biome-ignore lint/a11y/noStaticElementInteractions: card selection container
-							// biome-ignore lint/a11y/useKeyWithClickEvents: card selection keyboard
+							// biome-ignore lint/a11y/useSemanticElements: project list card
 							<div
 								key={project.id}
 								className="project-selector__card"
 								onClick={() => onSelectProject(project)}
+								onKeyDown={(e) => {
+									if (e.key === 'Enter' || e.key === ' ') {
+										onSelectProject(project);
+									}
+								}}
+								role="button"
+								tabIndex={0}
 							>
 								<div className="card-top">
 									<div className="card-icon">
@@ -366,6 +407,7 @@ export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
 									type="button"
 									className="btn-cancel"
 									onClick={() => setShowCreateModal(false)}
+									disabled={isCreating}
 								>
 									{t('projectSelector.cancel')}
 								</button>

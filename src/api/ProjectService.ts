@@ -19,12 +19,22 @@ import {
 } from '../core/persistence/ProjectStorage';
 import i18n from '../i18n';
 
+/**
+ * Service class managing project lifecycle, workspace operations, and item sync with storage.
+ */
 export class ProjectService {
 	private static _instance: ProjectService;
 	private activeProject: Project | null = null;
 
+	/**
+	 * Private constructor for singleton pattern.
+	 */
 	private constructor() {}
 
+	/**
+	 * Gets the singleton instance of ProjectService.
+	 * @returns ProjectService instance.
+	 */
 	public static instance(): ProjectService {
 		if (!ProjectService._instance) {
 			ProjectService._instance = new ProjectService();
@@ -32,10 +42,20 @@ export class ProjectService {
 		return ProjectService._instance;
 	}
 
+	/**
+	 * Helper method to remove tldraw "page:" prefix from workspace IDs.
+	 * @param id Raw ID string.
+	 * @returns ID string without page: prefix.
+	 */
 	private stripPagePrefix(id: string): string {
 		return id.replace(/^page:/, '');
 	}
 
+	/**
+	 * Loads a project by ID or returns the currently active cached project.
+	 * @param projectId Project ID string.
+	 * @returns Promise resolving to Project instance or null.
+	 */
 	private async getOrLoadProject(projectId: string): Promise<Project | null> {
 		if (this.activeProject?.id === projectId) {
 			return this.activeProject;
@@ -56,10 +76,21 @@ export class ProjectService {
 		return fallback;
 	}
 
+	/**
+	 * Retrieves all known project entries from storage.
+	 * @returns Promise resolving to an array of KnownProjectEntry records.
+	 */
 	public async getProjects(): Promise<KnownProjectEntry[]> {
 		return await ProjectStorage.getKnownProjects();
 	}
 
+	/**
+	 * Creates a new project with a initial workspace and saves it to persistence.
+	 * @param name Name of the project.
+	 * @param path Directory path of the project.
+	 * @param workspaceName Optional initial workspace name.
+	 * @returns Promise resolving to the newly created Project instance.
+	 */
 	public async createProject(
 		name: string,
 		path: string,
@@ -75,6 +106,11 @@ export class ProjectService {
 		return project;
 	}
 
+	/**
+	 * Opens an existing project folder on disk and loads its metadata.
+	 * @param folderPath Folder directory path.
+	 * @returns Promise resolving to the opened Project.
+	 */
 	public async openExistingProjectFolder(folderPath: string): Promise<Project> {
 		const jsonPath = formatSoundrefJsonPath(folderPath);
 		if (await DesktopBridge.fileExists(jsonPath)) {
@@ -104,6 +140,10 @@ export class ProjectService {
 		return await this.createProject(folderName, folderPath);
 	}
 
+	/**
+	 * Removes a project by ID from local project registry.
+	 * @param id Project ID string.
+	 */
 	public async deleteProject(id: string): Promise<void> {
 		if (this.activeProject?.id === id) {
 			this.activeProject = null;
@@ -111,12 +151,23 @@ export class ProjectService {
 		await ProjectStorage.removeProjectFromRegistry(id);
 	}
 
+	/**
+	 * Retrieves all workspaces in a given project.
+	 * @param projectId Project ID string.
+	 * @returns Promise resolving to array of Workspace objects.
+	 */
 	public async getWorkspaces(projectId: string): Promise<Workspace[]> {
 		const project = await this.getOrLoadProject(projectId);
 		if (!project) return [];
 		return Array.from(project.workspaces.values());
 	}
 
+	/**
+	 * Retrieves a specific workspace by ID within a project.
+	 * @param projectId Project ID string.
+	 * @param workspaceId Workspace ID string.
+	 * @returns Promise resolving to Workspace instance.
+	 */
 	public async getWorkspace(
 		projectId: string,
 		workspaceId: string,
@@ -128,6 +179,12 @@ export class ProjectService {
 		return ws;
 	}
 
+	/**
+	 * Creates a new workspace tab in a project.
+	 * @param projectId Project ID string.
+	 * @param name Display name for the workspace.
+	 * @returns Promise resolving to created Workspace instance.
+	 */
 	public async createWorkspace(
 		projectId: string,
 		name: string,
@@ -146,6 +203,13 @@ export class ProjectService {
 		return ws;
 	}
 
+	/**
+	 * Updates properties or viewport settings of a workspace.
+	 * @param projectId Project ID string.
+	 * @param workspaceId Workspace ID string.
+	 * @param payload Object containing optional name, zoom, and offset position updates.
+	 * @returns Promise resolving to updated Workspace instance.
+	 */
 	public async updateWorkspace(
 		projectId: string,
 		workspaceId: string,
@@ -174,6 +238,11 @@ export class ProjectService {
 		return ws;
 	}
 
+	/**
+	 * Deletes a workspace tab from a project.
+	 * @param projectId Project ID string.
+	 * @param workspaceId Workspace ID string.
+	 */
 	public async deleteWorkspace(
 		projectId: string,
 		workspaceId: string,
@@ -188,6 +257,12 @@ export class ProjectService {
 		await ProjectStorage.saveProjectData(project);
 	}
 
+	/**
+	 * Retrieves all board items belonging to a specific workspace.
+	 * @param projectId Project ID string.
+	 * @param workspaceId Workspace ID string.
+	 * @returns Promise resolving to an array of BoardItem objects.
+	 */
 	public async getItems(
 		projectId: string,
 		workspaceId: string,
@@ -203,6 +278,12 @@ export class ProjectService {
 		return [];
 	}
 
+	/**
+	 * Synchronizes an array of item payloads into a workspace item map and saves state.
+	 * @param projectId Project ID string.
+	 * @param workspaceId Workspace ID string.
+	 * @param itemsPayload Array of serialized item data.
+	 */
 	public async syncWorkspaceItems(
 		projectId: string,
 		workspaceId: string,
@@ -265,6 +346,13 @@ export class ProjectService {
 		await ProjectStorage.saveProjectData(project);
 	}
 
+	/**
+	 * Creates a single board item in a workspace.
+	 * @param projectId Project ID string.
+	 * @param workspaceId Workspace ID string.
+	 * @param itemPayload Payload defining item properties and position.
+	 * @returns Promise resolving to created BoardItem instance.
+	 */
 	public async createItem(
 		projectId: string,
 		workspaceId: string,
@@ -334,6 +422,12 @@ export class ProjectService {
 		return item;
 	}
 
+	/**
+	 * Deletes a single board item by ID from a workspace.
+	 * @param projectId Project ID string.
+	 * @param workspaceId Workspace ID string.
+	 * @param itemId Item ID string.
+	 */
 	public async deleteItem(
 		projectId: string,
 		workspaceId: string,
@@ -344,7 +438,7 @@ export class ProjectService {
 		if (!project) return;
 
 		const ws = project.workspaces.get(cleanWsId);
-		if (ws && ws.items.has(itemId)) {
+		if (ws?.items.has(itemId)) {
 			const cmd = new DeleteItemCommand(ws, itemId);
 			cmd.execute();
 			await ProjectStorage.saveProjectData(project);

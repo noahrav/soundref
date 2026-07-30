@@ -27,11 +27,21 @@ import { uiOverrides } from './config/ui-overrides';
 import { fetchCoverArt, parseStreamUrl } from './utils/embedUtils';
 import { fromRichText, toRichText } from './utils/richText';
 
+/**
+ * Props for Board component.
+ */
 interface BoardProps {
+	/** Active project ID */
 	projectId?: string;
+	/** Callback to return to project list screen */
 	onBackToProjects?: () => void;
 }
 
+/**
+ * Extracts plain text string content from note/text shape properties.
+ * @param props Raw shape props object.
+ * @returns Plain text content string.
+ */
 function extractNoteContent(props: any): string {
 	if (!props) return '';
 	if (typeof props.text === 'string' && props.text) return props.text;
@@ -42,6 +52,10 @@ function extractNoteContent(props: any): string {
 	return props.text || '';
 }
 
+/**
+ * Main Board component rendering the tldraw canvas instance, toolbar, tabs, mini player,
+ * and track edit modal. Manages auto-sync of shapes and camera to persistent storage.
+ */
 export default function Board({
 	projectId: initialProjectId,
 	onBackToProjects,
@@ -53,7 +67,6 @@ export default function Board({
 	const service = ProjectService.instance();
 	const editorRef = useRef<Editor | null>(null);
 
-	// Modal State
 	const [isTrackModalOpen, setIsTrackModalOpen] = useState(false);
 	const [trackModalPos, setTrackModalPos] = useState<{
 		x: number;
@@ -64,6 +77,9 @@ export default function Board({
 		Partial<TrackFormData>
 	>({});
 
+	/**
+	 * Opens track modal with preset data or position coordinates.
+	 */
 	const handleOpenTrackModal = useCallback(
 		(
 			pos?: { x: number; y: number },
@@ -115,6 +131,9 @@ export default function Board({
 			);
 	}, [handleOpenTrackModal]);
 
+	/**
+	 * Saves track modal form data to new or existing track shape.
+	 */
 	const handleSaveTrackForm = useCallback(
 		(data: TrackFormData) => {
 			const editor = editorRef.current;
@@ -161,6 +180,10 @@ export default function Board({
 		[editingTrackShape, trackModalPos],
 	);
 
+	/**
+	 * Handler executed when tldraw editor mounts. Registers event listeners,
+	 * loads project workspace items, and syncs changes to persistent storage.
+	 */
 	const handleMount = useCallback(
 		(editor: Editor) => {
 			editorRef.current = editor;
@@ -666,6 +689,7 @@ export default function Board({
 	);
 
 	return (
+		// biome-ignore lint/a11y/noStaticElementInteractions: drag drop canvas container
 		<div
 			style={{ position: 'fixed', inset: 0 }}
 			onDragOver={handleDragOver}

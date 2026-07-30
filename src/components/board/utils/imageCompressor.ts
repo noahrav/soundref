@@ -1,3 +1,12 @@
+/**
+ * Resizes and compresses an image File or image URL string into a lightweight JPEG Data URL.
+ * Prevents canvas memory bloat and keeps persistent project storage files lightweight.
+ * @param fileOrUrl Raw File object or image URL string.
+ * @param maxWidth Maximum allowed width in pixels.
+ * @param maxHeight Maximum allowed height in pixels.
+ * @param quality JPEG compression quality factor (0 to 1).
+ * @returns Promise resolving to compressed JPEG Data URL string or original string.
+ */
 export function compressImageToDataUrl(
 	fileOrUrl: File | string,
 	maxWidth = 300,
@@ -6,7 +15,6 @@ export function compressImageToDataUrl(
 ): Promise<string> {
 	return new Promise((resolve) => {
 		if (typeof fileOrUrl === 'string' && fileOrUrl.startsWith('file://')) {
-			// Local disk path, leave as is
 			resolve(fileOrUrl);
 			return;
 		}

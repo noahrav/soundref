@@ -1,5 +1,8 @@
 import { useEditor, useValue } from 'tldraw';
 
+/**
+ * Background grid component rendering a dynamic dot grid that scales smoothly with camera zoom and pan.
+ */
 export function DotGrid() {
 	const editor = useEditor();
 	const camera = useValue('camera', () => editor.getCamera(), [editor]);
@@ -12,7 +15,6 @@ export function DotGrid() {
 	const { x, y, z } = camera;
 	const BASE_GAP = (gridSize || 10) * 2;
 
-	// Dynamically scale step so screenGap stays between 16px and 64px
 	let stepGap = BASE_GAP;
 	if (z > 0) {
 		while (stepGap * z < 16) {

@@ -1,14 +1,29 @@
 import { invoke } from '@tauri-apps/api/core';
 
+/**
+ * Interface representing a known project entry in the global desktop registry.
+ */
 export interface KnownProjectEntry {
+	/** Unique project ID string */
 	id: string;
+	/** Display name of the project */
 	name: string;
+	/** File system folder path of the project */
 	path: string;
+	/** ISO timestamp string of project creation time */
 	createdAt: string;
+	/** Number of workspaces contained within the project */
 	workspaceCount: number;
 }
 
+/**
+ * Utility bridge encapsulating Tauri desktop IPC calls and fallback browser checks.
+ */
 export class DesktopBridge {
+	/**
+	 * Checks whether the current runtime environment is inside Tauri desktop app.
+	 * @returns True if running in Tauri, false if in standard web browser.
+	 */
 	public static isTauri(): boolean {
 		return (
 			typeof window !== 'undefined' &&
@@ -18,6 +33,10 @@ export class DesktopBridge {
 		);
 	}
 
+	/**
+	 * Invokes native desktop folder picker dialog.
+	 * @returns Promise resolving to picked folder path string or null.
+	 */
 	public static async pickFolder(): Promise<string | null> {
 		if (DesktopBridge.isTauri()) {
 			try {
@@ -31,6 +50,10 @@ export class DesktopBridge {
 		return null;
 	}
 
+	/**
+	 * Invokes native audio file picker dialog.
+	 * @returns Promise resolving to picked audio file path string or null.
+	 */
 	public static async pickAudioFile(): Promise<string | null> {
 		if (DesktopBridge.isTauri()) {
 			try {
@@ -43,6 +66,10 @@ export class DesktopBridge {
 		return null;
 	}
 
+	/**
+	 * Invokes native image file picker dialog.
+	 * @returns Promise resolving to picked image file path string or null.
+	 */
 	public static async pickImageFile(): Promise<string | null> {
 		if (DesktopBridge.isTauri()) {
 			try {
@@ -55,6 +82,11 @@ export class DesktopBridge {
 		return null;
 	}
 
+	/**
+	 * Reads binary data from specified desktop file path.
+	 * @param path File system path.
+	 * @returns Promise resolving to ArrayBuffer or null on failure.
+	 */
 	public static async readFileBinary(
 		path: string,
 	): Promise<ArrayBuffer | null> {
@@ -73,6 +105,11 @@ export class DesktopBridge {
 		return null;
 	}
 
+	/**
+	 * Reads text content from specified desktop file path.
+	 * @param path File system path.
+	 * @returns Promise resolving to text content string or null on failure.
+	 */
 	public static async readTextFile(path: string): Promise<string | null> {
 		if (DesktopBridge.isTauri()) {
 			try {
@@ -89,6 +126,12 @@ export class DesktopBridge {
 		return null;
 	}
 
+	/**
+	 * Writes text content to specified desktop file path.
+	 * @param path File system path.
+	 * @param content Text content string to write.
+	 * @returns Promise resolving to true on success, false on failure.
+	 */
 	public static async writeTextFile(
 		path: string,
 		content: string,
@@ -108,6 +151,11 @@ export class DesktopBridge {
 		return false;
 	}
 
+	/**
+	 * Creates a directory at specified desktop path.
+	 * @param path Folder directory path.
+	 * @returns Promise resolving to true on success, false on failure.
+	 */
 	public static async createDir(path: string): Promise<boolean> {
 		if (DesktopBridge.isTauri()) {
 			try {
@@ -121,6 +169,11 @@ export class DesktopBridge {
 		return false;
 	}
 
+	/**
+	 * Checks if a file or directory exists at specified path.
+	 * @param path File system path string.
+	 * @returns Promise resolving to true if file exists, false otherwise.
+	 */
 	public static async fileExists(path: string): Promise<boolean> {
 		if (DesktopBridge.isTauri()) {
 			try {
@@ -132,6 +185,10 @@ export class DesktopBridge {
 		return false;
 	}
 
+	/**
+	 * Gets the path to global projects registry file.
+	 * @returns Promise resolving to file path string or null.
+	 */
 	public static async getRegistryFilePath(): Promise<string | null> {
 		if (DesktopBridge.isTauri()) {
 			try {

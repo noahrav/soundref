@@ -1,3 +1,8 @@
+/**
+ * Converts a plain multi-line string into tldraw richText document AST structure.
+ * @param text Plain string content.
+ * @returns Serialized richText document object.
+ */
 export function toRichText(text: string) {
 	const lines = text.split('\n');
 	const content = lines.map((line) => {
@@ -15,6 +20,11 @@ export function toRichText(text: string) {
 	};
 }
 
+/**
+ * Extracts plain text string content from a tldraw richText document AST object.
+ * @param richText AST document structure or string.
+ * @returns Extracted plain text string.
+ */
 export function fromRichText(richText: any): string {
 	if (!richText) return '';
 	if (typeof richText === 'string') return richText;

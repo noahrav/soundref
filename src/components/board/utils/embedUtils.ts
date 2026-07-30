@@ -1,5 +1,10 @@
+/**
+ * Metadata structure describing streaming service embed details.
+ */
 export interface EmbedInfo {
+	/** Indicates whether the URL is a recognized streaming URL or service */
 	isStream: boolean;
+	/** Recognized music streaming service platform */
 	service?:
 		| 'soundcloud'
 		| 'spotify'
@@ -8,18 +13,24 @@ export interface EmbedInfo {
 		| 'applemusic'
 		| 'bandcamp'
 		| 'generic';
+	/** Formatted iframe embed URL for playback */
 	embedUrl?: string;
 }
 
+/**
+ * Parses a web URL and returns streaming service classification and embed parameters.
+ * Supports YouTube, SoundCloud, Spotify, Deezer, Apple Music, Bandcamp, and direct HTTP streams.
+ * @param url Raw web URL string.
+ * @returns EmbedInfo object with service type and formatted embed URL.
+ */
 export function parseStreamUrl(url: string): EmbedInfo {
 	if (!url) return { isStream: false };
 	const cleanUrl = url.trim();
 
-	// YouTube
 	const ytMatch = cleanUrl.match(
 		/(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/i,
 	);
-	if (ytMatch && ytMatch[1]) {
+	if (ytMatch?.[1]) {
 		return {
 			isStream: true,
 			service: 'youtube',
@@ -27,7 +38,6 @@ export function parseStreamUrl(url: string): EmbedInfo {
 		};
 	}
 
-	// SoundCloud
 	if (cleanUrl.includes('soundcloud.com')) {
 		return {
 			isStream: true,
@@ -36,7 +46,6 @@ export function parseStreamUrl(url: string): EmbedInfo {
 		};
 	}
 
-	// Spotify
 	if (cleanUrl.includes('spotify.com')) {
 		const spotifyPath = cleanUrl.replace('https://open.spotify.com/', '');
 		return {
@@ -46,10 +55,9 @@ export function parseStreamUrl(url: string): EmbedInfo {
 		};
 	}
 
-	// Deezer
 	if (cleanUrl.includes('deezer.com')) {
 		const trackMatch = cleanUrl.match(/track\/(\d+)/i);
-		if (trackMatch && trackMatch[1]) {
+		if (trackMatch?.[1]) {
 			return {
 				isStream: true,
 				service: 'deezer',
@@ -63,7 +71,6 @@ export function parseStreamUrl(url: string): EmbedInfo {
 		};
 	}
 
-	// Apple Music
 	if (cleanUrl.includes('music.apple.com')) {
 		const embedUrl = cleanUrl.replace(
 			'music.apple.com',
@@ -76,7 +83,6 @@ export function parseStreamUrl(url: string): EmbedInfo {
 		};
 	}
 
-	// Bandcamp
 	if (cleanUrl.includes('bandcamp.com')) {
 		return {
 			isStream: true,
@@ -85,7 +91,6 @@ export function parseStreamUrl(url: string): EmbedInfo {
 		};
 	}
 
-	// Generic http stream or audio link
 	if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
 		if (cleanUrl.match(/\.(mp3|wav|ogg|flac|m4a|aac)(\?.*)?$/i)) {
 			return { isStream: false };
@@ -100,19 +105,22 @@ export function parseStreamUrl(url: string): EmbedInfo {
 	return { isStream: false };
 }
 
+/**
+ * Fetches cover artwork URL for supported streaming URLs via oEmbed or Open Graph meta tags.
+ * @param url Stream or web page URL string.
+ * @returns Promise resolving to the image artwork URL, or empty string if unretrievable.
+ */
 export async function fetchCoverArt(url: string): Promise<string> {
 	if (!url) return '';
 	const cleanUrl = url.trim();
 
-	// YouTube
 	const ytMatch = cleanUrl.match(
 		/(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/i,
 	);
-	if (ytMatch && ytMatch[1]) {
+	if (ytMatch?.[1]) {
 		return `https://img.youtube.com/vi/${ytMatch[1]}/hqdefault.jpg`;
 	}
 
-	// SoundCloud
 	if (cleanUrl.includes('soundcloud.com')) {
 		try {
 			const res = await fetch(
@@ -125,7 +133,6 @@ export async function fetchCoverArt(url: string): Promise<string> {
 		} catch {}
 	}
 
-	// Spotify
 	if (cleanUrl.includes('spotify.com')) {
 		try {
 			const res = await fetch(
@@ -138,7 +145,6 @@ export async function fetchCoverArt(url: string): Promise<string> {
 		} catch {}
 	}
 
-	// Deezer
 	if (cleanUrl.includes('deezer.com')) {
 		try {
 			const res = await fetch(
@@ -151,7 +157,6 @@ export async function fetchCoverArt(url: string): Promise<string> {
 		} catch {}
 	}
 
-	// Bandcamp
 	if (cleanUrl.includes('bandcamp.com')) {
 		try {
 			const res = await fetch(
@@ -166,7 +171,6 @@ export async function fetchCoverArt(url: string): Promise<string> {
 		} catch {}
 	}
 
-	// Generic Open Graph scrape attempt
 	if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
 		try {
 			const res = await fetch(cleanUrl);
@@ -179,7 +183,7 @@ export async function fetchCoverArt(url: string): Promise<string> {
 					html.match(
 						/<meta\s+name=["']twitter:image["']\s+content=["']([^"']+)["']/i,
 					);
-				if (ogMatch && ogMatch[1]) {
+				if (ogMatch?.[1]) {
 					return ogMatch[1];
 				}
 			}
