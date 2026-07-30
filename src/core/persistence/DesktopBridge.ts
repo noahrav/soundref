@@ -231,10 +231,16 @@ export class DesktopBridge {
 	public static async exitApp(): Promise<void> {
 		if (DesktopBridge.isTauri()) {
 			try {
-				const { getCurrentWindow } = await import('@tauri-apps/api/window');
-				await getCurrentWindow().close();
+				const { invoke } = await import('@tauri-apps/api/core');
+				await invoke('exit_app');
 			} catch (err) {
-				console.error('[DesktopBridge] exitApp error:', err);
+				console.error('[DesktopBridge] exit_app invoke error, trying window close:', err);
+				try {
+					const { getCurrentWindow } = await import('@tauri-apps/api/window');
+					await getCurrentWindow().close();
+				} catch (winErr) {
+					console.error('[DesktopBridge] exitApp window close error:', winErr);
+				}
 			}
 		} else {
 			window.close();

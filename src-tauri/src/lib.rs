@@ -94,6 +94,11 @@ fn open_folder(path: String) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn exit_app(app: tauri::AppHandle) {
+    app.exit(0);
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -108,7 +113,8 @@ pub fn run() {
             create_dir,
             file_exists,
             get_projects_registry_path,
-            open_folder
+            open_folder,
+            exit_app
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
