@@ -61,6 +61,39 @@ fn read_file_binary(path: String) -> Result<tauri::ipc::Response, String> {
     Ok(tauri::ipc::Response::new(bytes))
 }
 
+#[tauri::command]
+fn open_folder(path: String) -> Result<(), String> {
+    let path_obj = Path::new(&path);
+    let target_dir = if path_obj.is_file() {
+        path_obj.parent().unwrap_or(path_obj)
+    } else {
+        path_obj
+    };
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(target_dir)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(target_dir)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(target_dir)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -74,7 +107,8 @@ pub fn run() {
             write_text_file,
             create_dir,
             file_exists,
-            get_projects_registry_path
+            get_projects_registry_path,
+            open_folder
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

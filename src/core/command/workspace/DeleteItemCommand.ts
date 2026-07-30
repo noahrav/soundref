@@ -6,35 +6,40 @@ import { Command } from '../Command';
  * Command deleting a board item from a workspace canvas with undo restore capability.
  */
 export class DeleteItemCommand extends Command {
-	private deletedItem: BoardItem | undefined = undefined;
+	public itemToDelete: BoardItem | undefined;
 
 	/**
 	 * Creates a DeleteItemCommand instance.
 	 * @param workspace Target Workspace instance.
-	 * @param itemToDeleteId Item ID string to delete.
+	 * @param itemTarget BoardItem instance or item ID string to delete.
 	 */
 	constructor(
 		public workspace: Workspace,
-		public itemToDeleteId: string,
+		itemTarget: string | BoardItem,
 	) {
 		super();
+		if (typeof itemTarget === 'string') {
+			this.itemToDelete = workspace.items.get(itemTarget);
+		} else {
+			this.itemToDelete = itemTarget;
+		}
 	}
 
 	/**
 	 * Executes item deletion.
 	 */
 	public execute(): void {
-		if (this.deletedItem !== undefined) return;
-		this.deletedItem = this.workspace.deleteBoardItem(this.itemToDeleteId);
+		if (this.itemToDelete) {
+			this.workspace.deleteBoardItem(this.itemToDelete.id);
+		}
 	}
 
 	/**
 	 * Restores deleted item.
 	 */
 	public undo(): void {
-		if (this.deletedItem !== undefined) {
-			this.workspace.addBoardItem(this.deletedItem);
-			this.deletedItem = undefined;
+		if (this.itemToDelete) {
+			this.workspace.addBoardItem(this.itemToDelete);
 		}
 	}
 }

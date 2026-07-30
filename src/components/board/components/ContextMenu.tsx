@@ -20,6 +20,7 @@ import {
 import { NOTE_COLOR_PALETTE } from '../config/colorPalette';
 import { fetchCoverArt, parseStreamUrl } from '../utils/embedUtils';
 import { toRichText } from '../utils/richText';
+import { getSectionBoundsForSelection } from '../utils/sectionUtils';
 
 /**
  * Screen position coordinates for contextual popup menu.
@@ -293,6 +294,28 @@ export const CustomContextMenu = track(function CustomContextMenu({
 					id: 'organize',
 					items: [
 						{
+							id: 'create-section',
+							label: t('board.groupItem'),
+							onSelect: () => {
+								const bounds = getSectionBoundsForSelection(editor);
+								const newId = createShapeId();
+								editor.createShape({
+									id: newId,
+									type: 'section',
+									x: bounds.x,
+									y: bounds.y,
+									props: {
+										title: 'Section',
+										color: 'blue',
+										w: bounds.w,
+										h: bounds.h,
+									},
+								});
+								editor.sendToBack([newId]);
+								editor.select(newId);
+							},
+						},
+						{
 							id: 'group',
 							label: t('contextMenu.group'),
 							shortcut: '⌘G',
@@ -403,17 +426,21 @@ export const CustomContextMenu = track(function CustomContextMenu({
 												x: menu.x,
 												y: menu.y,
 											});
+											const bounds = getSectionBoundsForSelection(
+												editor,
+												point,
+											);
 											const newId = createShapeId();
 											editor.createShape({
 												id: newId,
 												type: 'section',
-												x: point.x - 200,
-												y: point.y - 150,
+												x: bounds.x,
+												y: bounds.y,
 												props: {
 													title: 'Section',
 													color: 'blue',
-													w: 400,
-													h: 300,
+													w: bounds.w,
+													h: bounds.h,
 												},
 											});
 											editor.sendToBack([newId]);

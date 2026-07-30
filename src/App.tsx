@@ -23,6 +23,7 @@ function App() {
 		<Board
 			projectId={selectedProjectId}
 			onBackToProjects={() => setSelectedProjectId(null)}
+			onSelectProject={(id) => setSelectedProjectId(id)}
 		/>
 	);
 }

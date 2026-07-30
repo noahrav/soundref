@@ -3,11 +3,9 @@ import type { Workspace } from '../../model/Workspace';
 import { Command } from '../Command';
 
 /**
- * Command creating a board item on a workspace canvas with undo capability.
+ * Command creating a board item on a workspace canvas with undo/redo capability.
  */
 export class CreateItemCommand extends Command {
-	private createdItemId: string | null = null;
-
 	/**
 	 * Creates a CreateItemCommand instance.
 	 * @param workspace Target Workspace instance.
@@ -24,17 +22,13 @@ export class CreateItemCommand extends Command {
 	 * Executes item creation.
 	 */
 	public execute(): void {
-		if (this.createdItemId !== null) return;
-		this.createdItemId = this.workspace.addBoardItem(this.item);
+		this.workspace.addBoardItem(this.item);
 	}
 
 	/**
 	 * Reverts item creation.
 	 */
 	public undo(): void {
-		if (this.createdItemId !== null) {
-			this.workspace.deleteBoardItem(this.createdItemId);
-			this.createdItemId = null;
-		}
+		this.workspace.deleteBoardItem(this.item.id);
 	}
 }

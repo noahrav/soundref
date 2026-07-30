@@ -18,6 +18,7 @@ import {
 	useEditor,
 } from 'tldraw';
 import { toRichText } from '../utils/richText';
+import { getSectionBoundsForSelection } from '../utils/sectionUtils';
 import { ColorPicker } from './ColorPicker';
 import './BoardToolbar.scss';
 
@@ -112,23 +113,22 @@ export const BoardToolbar = track(function BoardToolbar({
 	}, [editor]);
 
 	/**
-	 * Creates a new section box at the viewport center.
+	 * Creates a new section box around selection or at viewport center.
 	 */
 	const handleAddSectionItem = useCallback(() => {
-		const viewportBounds = editor.getViewportPageBounds();
-		const center = viewportBounds.center;
+		const bounds = getSectionBoundsForSelection(editor);
 		const newId = createShapeId();
 
 		editor.createShape({
 			id: newId,
 			type: 'section',
-			x: center.x - 200,
-			y: center.y - 150,
+			x: bounds.x,
+			y: bounds.y,
 			props: {
 				title: 'Section',
 				color: 'blue',
-				w: 400,
-				h: 300,
+				w: bounds.w,
+				h: bounds.h,
 			},
 		});
 

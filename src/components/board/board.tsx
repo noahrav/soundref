@@ -10,10 +10,11 @@ import {
 import 'tldraw/tldraw.css';
 import { ProjectService } from '../../api/ProjectService';
 import { SectionItem } from '../../core/model/item/SectionItem';
-import type { StickyNoteItem } from '../../core/model/item/StickyNoteItem';
+import { StickyNoteItem } from '../../core/model/item/StickyNoteItem';
 import { TextItem } from '../../core/model/item/TextItem';
 import { TrackItem } from '../../core/model/item/TrackItem';
 import './board.scss';
+import { CreateProjectModal } from '../project/CreateProjectModal';
 import { BoardToolbar } from './components/BoardToolbar';
 import { CustomContextMenu } from './components/ContextMenu';
 import { MiniPlayer } from './components/MiniPlayer';
@@ -36,6 +37,8 @@ interface BoardProps {
 	projectId?: string;
 	/** Callback to return to project list screen */
 	onBackToProjects?: () => void;
+	/** Callback when a project is selected/created */
+	onSelectProject?: (projectId: string) => void;
 }
 
 /**
@@ -60,6 +63,7 @@ function extractNoteContent(props: any): string {
 export default function Board({
 	projectId: initialProjectId,
 	onBackToProjects,
+	onSelectProject,
 }: BoardProps) {
 	const { i18n, t } = useTranslation();
 	const [activeProjectId, setActiveProjectId] = useState<string | undefined>(
@@ -68,6 +72,8 @@ export default function Board({
 	const service = ProjectService.instance();
 	const editorRef = useRef<Editor | null>(null);
 
+	const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] =
+		useState(false);
 	const [isTrackModalOpen, setIsTrackModalOpen] = useState(false);
 	const [trackModalPos, setTrackModalPos] = useState<{
 		x: number;
@@ -502,7 +508,7 @@ export default function Board({
 									.catch((err) =>
 										console.warn('[Board] Could not sync items:', err),
 									);
-							}, 1200);
+							}, 300);
 						};
 
 						editor.store.listen((entry) => {
@@ -631,6 +637,295 @@ export default function Board({
 		[initialProjectId, service, t],
 	);
 
+	/**
+	 * Refreshes tldraw pages and shape objects to reflect updated domain workspace state following undo/redo.
+	 */
+	const refreshEditorFromDomain = useCallback(async () => {
+		const editor = editorRef.current;
+		if (!editor || !activeProjectId) return;
+
+		try {
+			const workspaces = await service.getWorkspaces(activeProjectId);
+			const domainWsMap = new Map(workspaces.map((ws) => [ws.id, ws]));
+			const existingPages = editor.getPages();
+
+			workspaces.forEach((ws) => {
+				const pageId = PageRecordType.createId(ws.id);
+				const existingPage = existingPages.find((p) => p.id === pageId);
+				if (!existingPage) {
+					editor.createPage({ id: pageId, name: ws.name });
+				} else if (existingPage.name !== ws.name) {
+					editor.renamePage(pageId, ws.name);
+				}
+			});
+
+			existingPages.forEach((p) => {
+				const cleanId = p.id.replace(/^page:/, '');
+				if (!domainWsMap.has(cleanId) && editor.getPages().length > 1) {
+					editor.deletePage(p.id);
+				}
+			});
+
+			const currentPageId = editor.getCurrentPageId();
+			const cleanWsId = currentPageId.replace(/^page:/, '');
+			const ws = domainWsMap.get(cleanWsId);
+			if (!ws) return;
+
+			const currentShapes = editor.getCurrentPageShapes();
+			const domainItems = ws.items;
+			const domainItemIds = new Set(Array.from(domainItems.keys()));
+
+			currentShapes.forEach((shape) => {
+				const cleanId = shape.id.replace(/^shape:/, '');
+				if (!domainItemIds.has(cleanId)) {
+					editor.deleteShape(shape.id);
+				}
+			});
+
+			domainItems.forEach((item, id) => {
+				const shapeId = createShapeId(id);
+				const existingShape = editor.getShape(shapeId);
+
+				if (!existingShape) {
+					if (item instanceof TextItem || (item as any).type === 'TextItem') {
+						const textItem = item as TextItem;
+						editor.createShape({
+							id: shapeId,
+							type: 'text',
+							x: textItem.position.x,
+							y: textItem.position.y,
+							props: {
+								richText: toRichText(textItem.content || ''),
+								scale: textItem.scale || 1,
+								w: textItem.width || 200,
+								autoSize: !textItem.width,
+							},
+						});
+					} else if (
+						item instanceof TrackItem ||
+						(item as any).type === 'TrackItem'
+					) {
+						const trackItem = item as TrackItem;
+						editor.createShape({
+							id: shapeId,
+							type: 'track',
+							x: trackItem.position.x,
+							y: trackItem.position.y,
+							props: {
+								title: trackItem.title || 'Track',
+								imageUrl: trackItem.imageUrl || '',
+								audioSource: trackItem.audioSource || '',
+								sourceType: trackItem.sourceType || 'local',
+								playMode: trackItem.playMode || 'oneshot',
+								loopRegion: trackItem.loopRegion || { start: 0, end: 0 },
+								w: trackItem.width || 200,
+								h: trackItem.width || 200,
+							},
+						});
+					} else if (
+						item instanceof SectionItem ||
+						(item as any).type === 'SectionItem'
+					) {
+						const sectionItem = item as SectionItem;
+						editor.createShape({
+							id: shapeId,
+							type: 'section',
+							x: sectionItem.position.x,
+							y: sectionItem.position.y,
+							props: {
+								title: sectionItem.title || 'Section',
+								color: (sectionItem.color || 'blue') as any,
+								w: sectionItem.width || 400,
+								h: sectionItem.height || 300,
+							},
+						});
+						editor.sendToBack([shapeId]);
+					} else {
+						const stickyItem = item as StickyNoteItem;
+						editor.createShape({
+							id: shapeId,
+							type: 'note',
+							x: stickyItem.position.x,
+							y: stickyItem.position.y,
+							props: {
+								color: (stickyItem.color || 'yellow') as any,
+								richText: toRichText(stickyItem.content || ''),
+								scale: stickyItem.scale || 1,
+							},
+						});
+					}
+				} else {
+					const updateProps: any = {};
+					let needsUpdate = false;
+
+					if (
+						existingShape.x !== item.position.x ||
+						existingShape.y !== item.position.y
+					) {
+						needsUpdate = true;
+					}
+
+					const shapeProps = existingShape.props as any;
+
+					if (
+						item instanceof StickyNoteItem ||
+						(item as any).type === 'StickyNoteItem'
+					) {
+						const stickyItem = item as StickyNoteItem;
+						const content = extractNoteContent(shapeProps);
+						if (content !== stickyItem.content) {
+							updateProps.richText = toRichText(stickyItem.content || '');
+							needsUpdate = true;
+						}
+						if (shapeProps.color !== stickyItem.color) {
+							updateProps.color = stickyItem.color;
+							needsUpdate = true;
+						}
+						if (shapeProps.scale !== stickyItem.scale) {
+							updateProps.scale = stickyItem.scale;
+							needsUpdate = true;
+						}
+					} else if (
+						item instanceof TextItem ||
+						(item as any).type === 'TextItem'
+					) {
+						const textItem = item as TextItem;
+						const content = extractNoteContent(shapeProps);
+						if (content !== textItem.content) {
+							updateProps.richText = toRichText(textItem.content || '');
+							needsUpdate = true;
+						}
+						if (shapeProps.w !== textItem.width) {
+							updateProps.w = textItem.width;
+							needsUpdate = true;
+						}
+						if (shapeProps.scale !== textItem.scale) {
+							updateProps.scale = textItem.scale;
+							needsUpdate = true;
+						}
+					} else if (
+						item instanceof TrackItem ||
+						(item as any).type === 'TrackItem'
+					) {
+						const trackItem = item as TrackItem;
+						if (shapeProps.title !== trackItem.title) {
+							updateProps.title = trackItem.title;
+							needsUpdate = true;
+						}
+						if (shapeProps.imageUrl !== trackItem.imageUrl) {
+							updateProps.imageUrl = trackItem.imageUrl;
+							needsUpdate = true;
+						}
+						if (shapeProps.audioSource !== trackItem.audioSource) {
+							updateProps.audioSource = trackItem.audioSource;
+							needsUpdate = true;
+						}
+						if (shapeProps.sourceType !== trackItem.sourceType) {
+							updateProps.sourceType = trackItem.sourceType;
+							needsUpdate = true;
+						}
+						if (shapeProps.playMode !== trackItem.playMode) {
+							updateProps.playMode = trackItem.playMode;
+							needsUpdate = true;
+						}
+						if (shapeProps.w !== trackItem.width) {
+							updateProps.w = trackItem.width;
+							updateProps.h = trackItem.width;
+							needsUpdate = true;
+						}
+						if (
+							shapeProps.loopRegion?.start !== trackItem.loopRegion?.start ||
+							shapeProps.loopRegion?.end !== trackItem.loopRegion?.end
+						) {
+							updateProps.loopRegion = trackItem.loopRegion;
+							needsUpdate = true;
+						}
+					} else if (
+						item instanceof SectionItem ||
+						(item as any).type === 'SectionItem'
+					) {
+						const sectionItem = item as SectionItem;
+						if (shapeProps.title !== sectionItem.title) {
+							updateProps.title = sectionItem.title;
+							needsUpdate = true;
+						}
+						if (shapeProps.color !== sectionItem.color) {
+							updateProps.color = sectionItem.color;
+							needsUpdate = true;
+						}
+						if (
+							shapeProps.w !== sectionItem.width ||
+							shapeProps.h !== sectionItem.height
+						) {
+							updateProps.w = sectionItem.width;
+							updateProps.h = sectionItem.height;
+							needsUpdate = true;
+						}
+					}
+
+					if (needsUpdate) {
+						editor.updateShape({
+							id: shapeId,
+							type: existingShape.type,
+							x: item.position.x,
+							y: item.position.y,
+							props: { ...existingShape.props, ...updateProps },
+						});
+					}
+				}
+			});
+		} catch (e) {
+			console.warn('[Board] Error refreshing editor from domain:', e);
+		}
+	}, [activeProjectId, service]);
+
+	useEffect(() => {
+		const handleHistoryChange = () => {
+			refreshEditorFromDomain();
+		};
+
+		window.addEventListener('soundref:history-change', handleHistoryChange);
+		return () =>
+			window.removeEventListener(
+				'soundref:history-change',
+				handleHistoryChange,
+			);
+	}, [refreshEditorFromDomain]);
+
+	useEffect(() => {
+		const handleKeyDown = (e: KeyboardEvent) => {
+			const target = e.target as HTMLElement | null;
+			if (
+				target &&
+				(target.tagName === 'INPUT' ||
+					target.tagName === 'TEXTAREA' ||
+					target.isContentEditable)
+			) {
+				return;
+			}
+
+			if (editorRef.current && editorRef.current.getEditingShapeId() !== null) {
+				return;
+			}
+
+			const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+			const key = e.key.toLowerCase();
+
+			if (isCtrlOrCmd && key === 'z' && !e.shiftKey) {
+				e.preventDefault();
+				e.stopPropagation();
+				service.undo();
+			} else if (isCtrlOrCmd && (key === 'y' || (key === 'z' && e.shiftKey))) {
+				e.preventDefault();
+				e.stopPropagation();
+				service.redo();
+			}
+		};
+
+		window.addEventListener('keydown', handleKeyDown, true);
+		return () => window.removeEventListener('keydown', handleKeyDown, true);
+	}, [service]);
+
 	useEffect(() => {
 		const handleGlobalPaste = async (e: ClipboardEvent) => {
 			const target = e.target as HTMLElement;
@@ -735,6 +1030,11 @@ export default function Board({
 
 	const handleCanvasDoubleClickCapture = useCallback((e: React.MouseEvent) => {
 		const target = e.target as HTMLElement;
+		const isInsideUi = target.closest(
+			'.page-tabs, .board-toolbar, .mini-player, .tl-ui-button, input, button',
+		);
+		if (isInsideUi) return;
+
 		const isInsideShape = target.closest(
 			'.tl-shape, .section-shape, .track-card, [data-shape-type]',
 		);
@@ -778,6 +1078,7 @@ export default function Board({
 				<PageTabs
 					projectId={activeProjectId}
 					onBackToProjects={onBackToProjects}
+					onOpenCreateProjectModal={() => setIsCreateProjectModalOpen(true)}
 				/>
 				<MiniPlayer />
 				<BoardToolbar onOpenTrackModal={handleOpenTrackModal} />
@@ -788,6 +1089,15 @@ export default function Board({
 				initialData={initialTrackData}
 				onSave={handleSaveTrackForm}
 				onClose={() => setIsTrackModalOpen(false)}
+			/>
+
+			<CreateProjectModal
+				isOpen={isCreateProjectModalOpen}
+				onClose={() => setIsCreateProjectModalOpen(false)}
+				onProjectCreated={(project) => {
+					setActiveProjectId(project.id);
+					onSelectProject?.(project.id);
+				}}
 			/>
 		</div>
 	);

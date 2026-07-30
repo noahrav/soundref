@@ -12,6 +12,7 @@ import { ProjectService } from '../../api/ProjectService';
 import type { Project } from '../../core/model/Project';
 import type { KnownProjectEntry } from '../../core/persistence/DesktopBridge';
 import { DesktopBridge } from '../../core/persistence/DesktopBridge';
+import { CreateProjectModal } from './CreateProjectModal';
 import './ProjectSelector.scss';
 
 /**
@@ -28,18 +29,6 @@ interface ProjectSelectorProps {
  * @param name Project folder name string.
  * @returns Joined directory path string.
  */
-function combinePathAndName(baseDir: string, name: string): string {
-	const cleanBase = baseDir.trim().replace(/[/\\]+$/, '');
-	const cleanName = name.trim();
-	if (!cleanBase) return cleanName ? `./${cleanName}` : './';
-	if (!cleanName) return cleanBase;
-	return `${cleanBase}/${cleanName}`;
-}
-
-/**
- * ProjectSelector screen component allowing users to create new projects,
- * open existing folders, filter known projects, and launch project workspaces.
- */
 export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
 	const { t } = useTranslation();
 	const service = ProjectService.instance();
@@ -49,10 +38,6 @@ export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
 	const [error, setError] = useState<string | null>(null);
 
 	const [showCreateModal, setShowCreateModal] = useState(false);
-	const [newProjectName, setNewProjectName] = useState('');
-	const [baseParentPath, setBaseParentPath] = useState('./');
-	const [newProjectPath, setNewProjectPath] = useState('./');
-	const [isCreating, setIsCreating] = useState(false);
 
 	/**
 	 * Loads known projects from storage registry.
@@ -76,32 +61,6 @@ export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
 	}, [loadProjects]);
 
 	/**
-	 * Handles project name input change and updates target path.
-	 */
-	const handleNameChange = (name: string) => {
-		setNewProjectName(name);
-		setNewProjectPath(combinePathAndName(baseParentPath, name));
-	};
-
-	/**
-	 * Handles direct target path editing.
-	 */
-	const handlePathChange = (path: string) => {
-		setNewProjectPath(path);
-	};
-
-	/**
-	 * Opens native desktop folder picker for project creation destination.
-	 */
-	const handlePickFolder = async () => {
-		const selectedFolder = await DesktopBridge.pickFolder();
-		if (selectedFolder) {
-			setBaseParentPath(selectedFolder);
-			setNewProjectPath(combinePathAndName(selectedFolder, newProjectName));
-		}
-	};
-
-	/**
 	 * Opens existing project folder from desktop disk.
 	 */
 	const handleOpenFolder = async () => {
@@ -117,36 +76,6 @@ export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
 			} finally {
 				setLoading(false);
 			}
-		}
-	};
-
-	/**
-	 * Handles submission of new project creation form.
-	 */
-	const handleCreateProject = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (!newProjectName.trim()) return;
-
-		const finalPath =
-			newProjectPath.trim() ||
-			combinePathAndName(baseParentPath, newProjectName);
-
-		try {
-			setIsCreating(true);
-			const created = await service.createProject(
-				newProjectName.trim(),
-				finalPath,
-			);
-			setShowCreateModal(false);
-			setNewProjectName('');
-			setBaseParentPath('./');
-			setNewProjectPath('./');
-			onSelectProject(created);
-		} catch (err) {
-			console.error('[ProjectSelector] Failed to create project:', err);
-			alert(t('projectSelector.errorCreateProject'));
-		} finally {
-			setIsCreating(false);
 		}
 	};
 
@@ -215,12 +144,7 @@ export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
 					<button
 						type="button"
 						className="project-selector__btn-new"
-						onClick={() => {
-							setShowCreateModal(true);
-							setNewProjectPath(
-								combinePathAndName(baseParentPath, newProjectName),
-							);
-						}}
+						onClick={() => setShowCreateModal(true)}
 					>
 						<FontAwesomeIcon icon={faPlus} />
 						{t('projectSelector.newProject')}
@@ -273,12 +197,7 @@ export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
 							<button
 								type="button"
 								className="project-selector__btn-new"
-								onClick={() => {
-									setShowCreateModal(true);
-									setNewProjectPath(
-										combinePathAndName(baseParentPath, newProjectName),
-									);
-								}}
+								onClick={() => setShowCreateModal(true)}
 							>
 								{t('projectSelector.createFirstProject')}
 							</button>
@@ -340,91 +259,11 @@ export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
 				)}
 			</main>
 
-			{showCreateModal && (
-				<div className="modal-overlay">
-					<button
-						type="button"
-						className="modal-backdrop-btn"
-						aria-label="Close"
-						onClick={() => setShowCreateModal(false)}
-					/>
-					<div className="modal-card">
-						<div className="modal-header">
-							<h2>{t('projectSelector.modalTitle')}</h2>
-							<button type="button" onClick={() => setShowCreateModal(false)}>
-								<FontAwesomeIcon icon={faXmark} />
-							</button>
-						</div>
-						<form onSubmit={handleCreateProject}>
-							<div className="form-group">
-								<label htmlFor="projectName">
-									{t('projectSelector.projectNameLabel')}
-								</label>
-								<input
-									id="projectName"
-									type="text"
-									placeholder={t('projectSelector.projectNamePlaceholder')}
-									value={newProjectName}
-									onChange={(e) => handleNameChange(e.target.value)}
-									required
-								/>
-							</div>
-							<div className="form-group">
-								<label htmlFor="projectPath">
-									{t('projectSelector.projectPathLabel')}
-								</label>
-								<div className="path-input-group">
-									<input
-										id="projectPath"
-										type="text"
-										placeholder={t('projectSelector.projectPathPlaceholder')}
-										value={newProjectPath}
-										onChange={(e) => handlePathChange(e.target.value)}
-										required
-									/>
-									<button
-										type="button"
-										className="btn-browse"
-										onClick={handlePickFolder}
-										title={t('projectSelector.browseTitle')}
-									>
-										<FontAwesomeIcon icon={faFolderOpen} />{' '}
-										{t('projectSelector.browse')}
-									</button>
-								</div>
-								<p
-									style={{
-										fontSize: '0.75rem',
-										color: '#999',
-										marginTop: '0.4rem',
-									}}
-								>
-									{t('projectSelector.pathHelp')}
-								</p>
-							</div>
-							<div className="modal-actions">
-								<button
-									type="button"
-									className="btn-cancel"
-									onClick={() => setShowCreateModal(false)}
-									disabled={isCreating}
-								>
-									{t('projectSelector.cancel')}
-								</button>
-								<button
-									type="submit"
-									className="btn-submit"
-									disabled={isCreating || !newProjectName.trim()}
-								>
-									{isCreating
-										? t('projectSelector.creating')
-										: t('projectSelector.create')}
-								</button>
-							</div>
-						</form>
-					</div>
-				</div>
-			)}
+			<CreateProjectModal
+				isOpen={showCreateModal}
+				onClose={() => setShowCreateModal(false)}
+				onProjectCreated={(project) => onSelectProject(project)}
+			/>
 		</div>
 	);
 }

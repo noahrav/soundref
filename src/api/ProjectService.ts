@@ -1,7 +1,10 @@
+import { CommandManager } from '../core/command/CommandManager';
 import { CreateWorkspaceCommand } from '../core/command/project/CreateWorkspaceCommand';
 import { DeleteWorkspaceCommand } from '../core/command/project/DeleteWorkspaceCommand';
+import { UpdateWorkspaceCommand } from '../core/command/project/UpdateWorkspaceCommand';
 import { CreateItemCommand } from '../core/command/workspace/CreateItemCommand';
 import { DeleteItemCommand } from '../core/command/workspace/DeleteItemCommand';
+import { UpdateItemCommand } from '../core/command/workspace/UpdateItemCommand';
 import type { BoardItem } from '../core/model/item/BoardItem';
 import { SectionItem } from '../core/model/item/SectionItem';
 import { StickyNoteItem } from '../core/model/item/StickyNoteItem';
@@ -26,6 +29,7 @@ import i18n from '../i18n';
 export class ProjectService {
 	private static _instance: ProjectService;
 	private activeProject: Project | null = null;
+	public isExecutingHistory = false;
 
 	/**
 	 * Private constructor for singleton pattern.
@@ -41,6 +45,14 @@ export class ProjectService {
 			ProjectService._instance = new ProjectService();
 		}
 		return ProjectService._instance;
+	}
+
+	/**
+	 * Gets the currently active loaded project instance.
+	 * @returns Active Project instance or null.
+	 */
+	public getActiveProject(): Project | null {
+		return this.activeProject;
 	}
 
 	/**
@@ -69,11 +81,13 @@ export class ProjectService {
 		const project = await ProjectStorage.loadProjectData(meta.id, meta.path);
 		if (project) {
 			this.activeProject = project;
+			CommandManager.instance().clear();
 			return project;
 		}
 
 		const fallback = new Project(meta.name, meta.path, meta.id, meta.createdAt);
 		this.activeProject = fallback;
+		CommandManager.instance().clear();
 		return fallback;
 	}
 
@@ -86,7 +100,7 @@ export class ProjectService {
 	}
 
 	/**
-	 * Creates a new project with a initial workspace and saves it to persistence.
+	 * Creates a new project with an initial workspace and saves it to persistence.
 	 * @param name Name of the project.
 	 * @param path Directory path of the project.
 	 * @param workspaceName Optional initial workspace name.
@@ -101,7 +115,7 @@ export class ProjectService {
 		const initialWorkspaceName =
 			workspaceName || i18n.t('board.defaultWorkspaceName', { number: 1 });
 		const cmd = new CreateWorkspaceCommand(project, initialWorkspaceName);
-		cmd.execute();
+		CommandManager.instance().executeCommand(cmd);
 		this.activeProject = project;
 		await ProjectStorage.saveProjectData(project);
 		return project;
@@ -122,6 +136,7 @@ export class ProjectService {
 					json.path = folderPath;
 					const project = ProjectStorage.deserializeProject(json);
 					this.activeProject = project;
+					CommandManager.instance().clear();
 					await ProjectStorage.saveProjectData(project);
 					return project;
 				} catch (e) {
@@ -194,7 +209,7 @@ export class ProjectService {
 		if (!project) throw new Error(`Project ${projectId} not found`);
 
 		const cmd = new CreateWorkspaceCommand(project, name);
-		cmd.execute();
+		CommandManager.instance().executeCommand(cmd);
 
 		const createdId = cmd.getCreatedWorkspaceId();
 		const ws = createdId ? project.workspaces.get(createdId) : undefined;
@@ -228,12 +243,20 @@ export class ProjectService {
 		const ws = project.workspaces.get(cleanWsId);
 		if (!ws) throw new Error(`Workspace ${workspaceId} not found`);
 
-		if (payload.name !== undefined) ws.name = payload.name;
-		if (payload.zoom !== undefined) ws.viewportState.zoom = payload.zoom;
-		if (payload.offsetX !== undefined)
-			ws.viewportState.offset.x = payload.offsetX;
-		if (payload.offsetY !== undefined)
-			ws.viewportState.offset.y = payload.offsetY;
+		const oldState = {
+			name: ws.name,
+			zoom: ws.viewportState.zoom,
+			offsetX: ws.viewportState.offset.x,
+			offsetY: ws.viewportState.offset.y,
+		};
+
+		const cmd = new UpdateWorkspaceCommand(
+			project,
+			cleanWsId,
+			oldState,
+			payload,
+		);
+		CommandManager.instance().executeCommand(cmd);
 
 		await ProjectStorage.saveProjectData(project);
 		return ws;
@@ -253,7 +276,7 @@ export class ProjectService {
 		if (!project) return;
 
 		const cmd = new DeleteWorkspaceCommand(project, cleanWsId);
-		cmd.execute();
+		CommandManager.instance().executeCommand(cmd);
 
 		await ProjectStorage.saveProjectData(project);
 	}
@@ -280,7 +303,57 @@ export class ProjectService {
 	}
 
 	/**
-	 * Synchronizes an array of item payloads into a workspace item map and saves state.
+	 * Compares board items to determine equality.
+	 */
+	private isItemEqual(itemA: BoardItem, itemB: BoardItem): boolean {
+		if (itemA.id !== itemB.id || itemA.constructor !== itemB.constructor)
+			return false;
+		if (
+			itemA.position.x !== itemB.position.x ||
+			itemA.position.y !== itemB.position.y
+		)
+			return false;
+
+		if (itemA instanceof StickyNoteItem && itemB instanceof StickyNoteItem) {
+			return (
+				itemA.content === itemB.content &&
+				itemA.color === itemB.color &&
+				itemA.scale === itemB.scale
+			);
+		}
+		if (itemA instanceof TextItem && itemB instanceof TextItem) {
+			return (
+				itemA.content === itemB.content &&
+				itemA.scale === itemB.scale &&
+				itemA.width === itemB.width
+			);
+		}
+		if (itemA instanceof TrackItem && itemB instanceof TrackItem) {
+			return (
+				itemA.title === itemB.title &&
+				itemA.imageUrl === itemB.imageUrl &&
+				itemA.audioSource === itemB.audioSource &&
+				itemA.sourceType === itemB.sourceType &&
+				itemA.playMode === itemB.playMode &&
+				itemA.width === itemB.width &&
+				itemA.scale === itemB.scale &&
+				itemA.loopRegion?.start === itemB.loopRegion?.start &&
+				itemA.loopRegion?.end === itemB.loopRegion?.end
+			);
+		}
+		if (itemA instanceof SectionItem && itemB instanceof SectionItem) {
+			return (
+				itemA.title === itemB.title &&
+				itemA.color === itemB.color &&
+				itemA.width === itemB.width &&
+				itemA.height === itemB.height
+			);
+		}
+		return true;
+	}
+
+	/**
+	 * Synchronizes an array of item payloads into a workspace item map and records commands.
 	 * @param projectId Project ID string.
 	 * @param workspaceId Workspace ID string.
 	 * @param itemsPayload Array of serialized item data.
@@ -296,6 +369,7 @@ export class ProjectService {
 			content?: string;
 			scale?: number;
 			width?: number;
+			height?: number;
 			color?: string;
 			title?: string;
 			imageUrl?: string;
@@ -351,6 +425,33 @@ export class ProjectService {
 			}
 			newItemsMap.set(item.id, item);
 		});
+
+		if (!this.isExecutingHistory) {
+			// Diff old items vs new items to record commands in CommandManager
+			newItemsMap.forEach((newItem, id) => {
+				const oldItem = ws.items.get(id);
+				if (!oldItem) {
+					CommandManager.instance().executeCommand(
+						new CreateItemCommand(ws, newItem),
+						false,
+					);
+				} else if (!this.isItemEqual(oldItem, newItem)) {
+					CommandManager.instance().executeCommand(
+						new UpdateItemCommand(ws, oldItem, newItem),
+						false,
+					);
+				}
+			});
+
+			ws.items.forEach((oldItem, id) => {
+				if (!newItemsMap.has(id)) {
+					CommandManager.instance().executeCommand(
+						new DeleteItemCommand(ws, oldItem),
+						false,
+					);
+				}
+			});
+		}
 
 		ws.items = newItemsMap;
 		await ProjectStorage.saveProjectData(project);
@@ -428,7 +529,7 @@ export class ProjectService {
 		}
 
 		const cmd = new CreateItemCommand(ws, item);
-		cmd.execute();
+		CommandManager.instance().executeCommand(cmd);
 
 		await ProjectStorage.saveProjectData(project);
 		return item;
@@ -451,9 +552,62 @@ export class ProjectService {
 
 		const ws = project.workspaces.get(cleanWsId);
 		if (ws?.items.has(itemId)) {
-			const cmd = new DeleteItemCommand(ws, itemId);
-			cmd.execute();
-			await ProjectStorage.saveProjectData(project);
+			const item = ws.items.get(itemId);
+			if (item) {
+				const cmd = new DeleteItemCommand(ws, item);
+				CommandManager.instance().executeCommand(cmd);
+				await ProjectStorage.saveProjectData(project);
+			}
+		}
+	}
+
+	/**
+	 * Undoes the last command on the undo stack.
+	 * @returns Promise resolving to true if a command was undone.
+	 */
+	public async undo(): Promise<boolean> {
+		this.isExecutingHistory = true;
+		try {
+			const undoneCmd = CommandManager.instance().undo();
+			if (undoneCmd && this.activeProject) {
+				await ProjectStorage.saveProjectData(this.activeProject);
+				window.dispatchEvent(
+					new CustomEvent('soundref:history-change', {
+						detail: { action: 'undo', command: undoneCmd },
+					}),
+				);
+				return true;
+			}
+			return false;
+		} finally {
+			setTimeout(() => {
+				this.isExecutingHistory = false;
+			}, 50);
+		}
+	}
+
+	/**
+	 * Redoes the last command on the redo stack.
+	 * @returns Promise resolving to true if a command was redone.
+	 */
+	public async redo(): Promise<boolean> {
+		this.isExecutingHistory = true;
+		try {
+			const redoneCmd = CommandManager.instance().redo();
+			if (redoneCmd && this.activeProject) {
+				await ProjectStorage.saveProjectData(this.activeProject);
+				window.dispatchEvent(
+					new CustomEvent('soundref:history-change', {
+						detail: { action: 'redo', command: redoneCmd },
+					}),
+				);
+				return true;
+			}
+			return false;
+		} finally {
+			setTimeout(() => {
+				this.isExecutingHistory = false;
+			}, 50);
 		}
 	}
 }

@@ -6,37 +6,40 @@ import { Command } from '../Command';
  * Command deleting a workspace tab from a project with undo restore capability.
  */
 export class DeleteWorkspaceCommand extends Command {
-	private deletedWorkspace: Workspace | undefined = undefined;
+	public workspaceToDelete: Workspace | undefined;
 
 	/**
 	 * Creates a DeleteWorkspaceCommand instance.
 	 * @param project Target Project instance.
-	 * @param workspaceToDeleteId ID string of workspace to delete.
+	 * @param workspaceTarget Workspace instance or workspace ID string to delete.
 	 */
 	constructor(
 		public project: Project,
-		public workspaceToDeleteId: string,
+		workspaceTarget: string | Workspace,
 	) {
 		super();
+		if (typeof workspaceTarget === 'string') {
+			this.workspaceToDelete = project.workspaces.get(workspaceTarget);
+		} else {
+			this.workspaceToDelete = workspaceTarget;
+		}
 	}
 
 	/**
 	 * Executes workspace deletion.
 	 */
 	public execute(): void {
-		if (this.deletedWorkspace !== undefined) return;
-		this.deletedWorkspace = this.project.deleteWorkspace(
-			this.workspaceToDeleteId,
-		);
+		if (this.workspaceToDelete) {
+			this.project.deleteWorkspace(this.workspaceToDelete.id);
+		}
 	}
 
 	/**
 	 * Restores the deleted workspace.
 	 */
 	public undo(): void {
-		if (this.deletedWorkspace !== undefined) {
-			this.project.addWorkspace(this.deletedWorkspace);
-			this.deletedWorkspace = undefined;
+		if (this.workspaceToDelete) {
+			this.project.addWorkspace(this.workspaceToDelete);
 		}
 	}
 }

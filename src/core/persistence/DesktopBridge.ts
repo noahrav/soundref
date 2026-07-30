@@ -200,4 +200,44 @@ export class DesktopBridge {
 		}
 		return null;
 	}
+
+	/**
+	 * Opens specified desktop folder in native file explorer.
+	 * @param path Directory path to open.
+	 */
+	public static async openFolder(path: string): Promise<void> {
+		if (DesktopBridge.isTauri()) {
+			try {
+				await invoke('open_folder', { path });
+				return;
+			} catch (err) {
+				console.warn(
+					'[DesktopBridge] open_folder invoke error, trying plugin-opener:',
+					err,
+				);
+			}
+			try {
+				const { openPath } = await import('@tauri-apps/plugin-opener');
+				await openPath(path);
+			} catch (err) {
+				console.error('[DesktopBridge] openPath error:', err);
+			}
+		}
+	}
+
+	/**
+	 * Quits the desktop application window.
+	 */
+	public static async exitApp(): Promise<void> {
+		if (DesktopBridge.isTauri()) {
+			try {
+				const { getCurrentWindow } = await import('@tauri-apps/api/window');
+				await getCurrentWindow().close();
+			} catch (err) {
+				console.error('[DesktopBridge] exitApp error:', err);
+			}
+		} else {
+			window.close();
+		}
+	}
 }
