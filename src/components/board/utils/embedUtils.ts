@@ -15,17 +15,67 @@ export interface EmbedInfo {
 		| 'generic';
 	/** Formatted iframe embed URL for playback */
 	embedUrl?: string;
+	/** Extracted or default iframe height in pixels */
+	height?: string;
 }
 
 /**
- * Parses a web URL and returns streaming service classification and embed parameters.
+ * Extracts iframe src URL attribute if input is an HTML iframe tag snippet.
+ * @param input Raw input string (URL or iframe HTML snippet).
+ * @returns Extracted src URL string or original cleaned input.
+ */
+export function extractIframeSrc(input: string): string {
+	if (!input) return '';
+	const clean = input.trim();
+	if (clean.includes('<iframe')) {
+		const match = clean.match(/src=["']([^"']+)["']/i);
+		if (match?.[1]) {
+			return match[1];
+		}
+	}
+	return clean;
+}
+
+/**
+ * Parses a web URL or HTML iframe snippet and returns streaming service details.
  * Supports YouTube, SoundCloud, Spotify, Deezer, Apple Music, Bandcamp, and direct HTTP streams.
- * @param url Raw web URL string.
- * @returns EmbedInfo object with service type and formatted embed URL.
+ * @param url Raw web URL string or iframe HTML snippet.
+ * @returns EmbedInfo object with service type, formatted embed URL, and frame height.
  */
 export function parseStreamUrl(url: string): EmbedInfo {
 	if (!url) return { isStream: false };
-	const cleanUrl = url.trim();
+	const raw = url.trim();
+	const cleanUrl = extractIframeSrc(raw);
+
+	let customHeight: string | undefined;
+	if (raw.includes('<iframe')) {
+		const hMatch =
+			raw.match(/height=["'](\d+)(?:px)?["']/i) ||
+			raw.match(/height:\s*(\d+)(?:px)?/i);
+		if (hMatch?.[1]) {
+			customHeight = hMatch[1];
+		}
+	}
+
+	if (cleanUrl.includes('bandcamp.com')) {
+		return {
+			isStream: true,
+			service: 'bandcamp',
+			embedUrl: cleanUrl,
+			height: customHeight || '42',
+		};
+	}
+
+	if (cleanUrl.includes('soundcloud.com')) {
+		return {
+			isStream: true,
+			service: 'soundcloud',
+			embedUrl: cleanUrl.includes('w.soundcloud.com')
+				? cleanUrl
+				: `https://w.soundcloud.com/player/?url=${encodeURIComponent(cleanUrl)}&auto_play=true&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false`,
+			height: customHeight || '120',
+		};
+	}
 
 	const ytMatch = cleanUrl.match(
 		/(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/i,
@@ -34,15 +84,10 @@ export function parseStreamUrl(url: string): EmbedInfo {
 		return {
 			isStream: true,
 			service: 'youtube',
-			embedUrl: `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1`,
-		};
-	}
-
-	if (cleanUrl.includes('soundcloud.com')) {
-		return {
-			isStream: true,
-			service: 'soundcloud',
-			embedUrl: `https://w.soundcloud.com/player/?url=${encodeURIComponent(cleanUrl)}&auto_play=true&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false`,
+			embedUrl: cleanUrl.includes('youtube.com/embed')
+				? cleanUrl
+				: `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1`,
+			height: customHeight || '120',
 		};
 	}
 
@@ -51,43 +96,34 @@ export function parseStreamUrl(url: string): EmbedInfo {
 		return {
 			isStream: true,
 			service: 'spotify',
-			embedUrl: `https://open.spotify.com/embed/${spotifyPath}`,
+			embedUrl: cleanUrl.includes('spotify.com/embed/')
+				? cleanUrl
+				: `https://open.spotify.com/embed/${spotifyPath}`,
+			height: customHeight || '80',
 		};
 	}
 
 	if (cleanUrl.includes('deezer.com')) {
 		const trackMatch = cleanUrl.match(/track\/(\d+)/i);
-		if (trackMatch?.[1]) {
-			return {
-				isStream: true,
-				service: 'deezer',
-				embedUrl: `https://widget.deezer.com/widget/auto/track/${trackMatch[1]}`,
-			};
-		}
 		return {
 			isStream: true,
 			service: 'deezer',
-			embedUrl: cleanUrl,
+			embedUrl:
+				trackMatch?.[1] && !cleanUrl.includes('widget.deezer.com')
+					? `https://widget.deezer.com/widget/auto/track/${trackMatch[1]}`
+					: cleanUrl,
+			height: customHeight || '120',
 		};
 	}
 
 	if (cleanUrl.includes('music.apple.com')) {
-		const embedUrl = cleanUrl.replace(
-			'music.apple.com',
-			'embed.music.apple.com',
-		);
 		return {
 			isStream: true,
 			service: 'applemusic',
-			embedUrl,
-		};
-	}
-
-	if (cleanUrl.includes('bandcamp.com')) {
-		return {
-			isStream: true,
-			service: 'bandcamp',
-			embedUrl: cleanUrl,
+			embedUrl: cleanUrl.includes('embed.music.apple.com')
+				? cleanUrl
+				: cleanUrl.replace('music.apple.com', 'embed.music.apple.com'),
+			height: customHeight || '120',
 		};
 	}
 
@@ -99,10 +135,20 @@ export function parseStreamUrl(url: string): EmbedInfo {
 			isStream: true,
 			service: 'generic',
 			embedUrl: cleanUrl,
+			height: customHeight || '120',
 		};
 	}
 
 	return { isStream: false };
+}
+
+/**
+ * Asynchronously resolves streaming embed metadata.
+ * @param url Stream URL or iframe HTML snippet.
+ * @returns Promise resolving to EmbedInfo object.
+ */
+export async function resolveStreamEmbed(url: string): Promise<EmbedInfo> {
+	return parseStreamUrl(url);
 }
 
 /**
@@ -112,7 +158,7 @@ export function parseStreamUrl(url: string): EmbedInfo {
  */
 export async function fetchCoverArt(url: string): Promise<string> {
 	if (!url) return '';
-	const cleanUrl = url.trim();
+	const cleanUrl = extractIframeSrc(url);
 
 	const ytMatch = cleanUrl.match(
 		/(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/i,

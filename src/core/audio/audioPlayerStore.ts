@@ -260,7 +260,8 @@ class AudioPlayerStore {
 		}
 
 		this.stop();
-		this.currentTrack = track;
+		this.currentTrack =
+			track.sourceType === 'stream' ? { ...track, playMode: 'oneshot' } : track;
 		this.currentTime = 0;
 
 		if (this.audioElement && track.audioSource) {

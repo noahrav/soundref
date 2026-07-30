@@ -1,6 +1,7 @@
 import {
 	faFolderOpen,
 	faImage,
+	faInfoCircle,
 	faMusic,
 	faRepeat,
 	faTimes,
@@ -87,9 +88,18 @@ export function TrackFormModal({
 		'start' | 'end' | null
 	>(null);
 
+	const [showLoopTooltip, setShowLoopTooltip] = useState(false);
+	const tooltipTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const imageInputRef = useRef<HTMLInputElement>(null);
 	const audioInputRef = useRef<HTMLInputElement>(null);
+
+	useEffect(() => {
+		if (sourceType === 'stream' && playMode === 'loop') {
+			setPlayMode('oneshot');
+		}
+	}, [sourceType, playMode]);
 
 	useEffect(() => {
 		if (isOpen) {
@@ -557,13 +567,36 @@ export function TrackFormModal({
 							</button>
 							<button
 								type="button"
-								className={`track-modal__toggle-btn ${playMode === 'loop' ? 'track-modal__toggle-btn--active' : ''}`}
-								onClick={() => setPlayMode('loop')}
+								className={`track-modal__toggle-btn ${playMode === 'loop' ? 'track-modal__toggle-btn--active' : ''} ${sourceType === 'stream' ? 'track-modal__toggle-btn--disabled' : ''}`}
+								onClick={() => {
+									if (sourceType === 'stream') {
+										setShowLoopTooltip(true);
+										if (tooltipTimeoutRef.current) {
+											clearTimeout(tooltipTimeoutRef.current);
+										}
+										tooltipTimeoutRef.current = setTimeout(() => {
+											setShowLoopTooltip(false);
+										}, 4000);
+									} else {
+										setPlayMode('loop');
+									}
+								}}
+								title={
+									sourceType === 'stream'
+										? t('trackForm.loopDisabledTooltip')
+										: ''
+								}
 							>
 								<FontAwesomeIcon icon={faRepeat} />
 								<span>{t('trackForm.loop')}</span>
 							</button>
 						</div>
+						{showLoopTooltip && (
+							<div className="track-modal__tooltip-banner">
+								<FontAwesomeIcon icon={faInfoCircle} />
+								<span>{t('trackForm.loopDisabledTooltip')}</span>
+							</div>
+						)}
 					</div>
 
 					{playMode === 'loop' && (

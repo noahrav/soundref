@@ -205,7 +205,7 @@ export function MiniPlayer() {
 						src={streamInfo.embedUrl}
 						title={currentTrack.title}
 						width="100%"
-						height="120"
+						height={streamInfo.height || '120'}
 						frameBorder="0"
 						allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
 						allowFullScreen
