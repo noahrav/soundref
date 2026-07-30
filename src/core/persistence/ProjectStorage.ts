@@ -1,4 +1,5 @@
 import type { BoardItem } from '../model/item/BoardItem';
+import { SectionItem } from '../model/item/SectionItem';
 import { StickyNoteItem } from '../model/item/StickyNoteItem';
 import { TextItem } from '../model/item/TextItem';
 import { TrackItem } from '../model/item/TrackItem';
@@ -207,6 +208,21 @@ export class ProjectStorage {
 							width: trackItem.width || 200,
 						};
 					}
+					if (item instanceof SectionItem) {
+						const sectionItem = item as SectionItem;
+						return {
+							id: sectionItem.id,
+							type: 'SectionItem',
+							position: {
+								x: sectionItem.position.x,
+								y: sectionItem.position.y,
+							},
+							title: sectionItem.title || 'Section',
+							color: sectionItem.color || 'blue',
+							width: sectionItem.width || 400,
+							height: sectionItem.height || 300,
+						};
+					}
 					const sticky = item as StickyNoteItem;
 					return {
 						id: sticky.id,
@@ -267,6 +283,17 @@ export class ProjectStorage {
 								itemJson.id,
 								itemJson.scale || 1,
 								itemJson.width || 200,
+							);
+						} else if (
+							itemJson.type === 'SectionItem'
+						) {
+							item = new SectionItem(
+								pos,
+								itemJson.title || 'Section',
+								itemJson.id,
+								itemJson.color || 'blue',
+								itemJson.width || 400,
+								(itemJson as any).height || 300,
 							);
 						} else {
 							item = new StickyNoteItem(

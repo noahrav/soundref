@@ -48,6 +48,7 @@
 		"textItem": "Texte",
 		"stickyNote": "Post-it",
 		"trackItem": "Piste audio",
+		"groupItem": "Section",
 		"addPage": "Ajouter une page",
 		"closePage": "Fermer {{name}}"
 	},
@@ -63,7 +64,9 @@
 		"add": "Ajouter",
 		"stickyNote": "Post-it",
 		"trackItem": "Piste audio",
+		"groupItem": "Section",
 		"editTrack": "Modifier la piste audio",
+		"renameSection": "Renommer la section",
 		"noteColor": "Couleur",
 		"color_yellow": "Jaune",
 		"color_blue": "Bleu",

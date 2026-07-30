@@ -3,6 +3,7 @@ import { DeleteWorkspaceCommand } from '../core/command/project/DeleteWorkspaceC
 import { CreateItemCommand } from '../core/command/workspace/CreateItemCommand';
 import { DeleteItemCommand } from '../core/command/workspace/DeleteItemCommand';
 import type { BoardItem } from '../core/model/item/BoardItem';
+import { SectionItem } from '../core/model/item/SectionItem';
 import { StickyNoteItem } from '../core/model/item/StickyNoteItem';
 import { TextItem } from '../core/model/item/TextItem';
 import { TrackItem } from '../core/model/item/TrackItem';
@@ -330,6 +331,20 @@ export class ProjectService {
 					p.scale || 1,
 					p.width || 200,
 				);
+			} else if (
+				p.type === 'SectionItem' ||
+				p.type === 'section' ||
+				p.type === 'GroupItem' ||
+				p.type === 'group_box'
+			) {
+				item = new SectionItem(
+					pos,
+					p.title || 'Section',
+					p.id,
+					p.color || 'blue',
+					p.width || 400,
+					(p as any).height || 300,
+				);
 			} else {
 				item = new StickyNoteItem(
 					pos,
@@ -348,29 +363,15 @@ export class ProjectService {
 
 	/**
 	 * Creates a single board item in a workspace.
-	 * @param projectId Project ID string.
-	 * @param workspaceId Workspace ID string.
+	 * @param projectId Project ID.
+	 * @param workspaceId Workspace ID.
 	 * @param itemPayload Payload defining item properties and position.
 	 * @returns Promise resolving to created BoardItem instance.
 	 */
 	public async createItem(
 		projectId: string,
 		workspaceId: string,
-		itemPayload: {
-			type: string;
-			positionX: number;
-			positionY: number;
-			content?: string;
-			scale?: number;
-			width?: number;
-			color?: string;
-			title?: string;
-			imageUrl?: string;
-			audioSource?: string;
-			sourceType?: 'local' | 'stream';
-			playMode?: 'oneshot' | 'loop';
-			loopRegion?: { start: number; end: number };
-		},
+		itemPayload: any,
 	): Promise<BoardItem> {
 		const cleanWsId = this.stripPagePrefix(workspaceId);
 		const project = await this.getOrLoadProject(projectId);
@@ -379,8 +380,12 @@ export class ProjectService {
 		const ws = project.workspaces.get(cleanWsId);
 		if (!ws) throw new Error(`Workspace ${workspaceId} not found`);
 
-		const pos = new Position(itemPayload.positionX, itemPayload.positionY);
+		const pos = new Position(
+			itemPayload.positionX || itemPayload.position?.x || 0,
+			itemPayload.positionY || itemPayload.position?.y || 0,
+		);
 		let item: BoardItem;
+
 		if (itemPayload.type === 'TextItem' || itemPayload.type === 'text') {
 			item = new TextItem(
 				pos,
@@ -404,6 +409,18 @@ export class ProjectService {
 				undefined,
 				itemPayload.scale || 1,
 				itemPayload.width || 200,
+			);
+		} else if (
+			itemPayload.type === 'SectionItem' ||
+			itemPayload.type === 'section'
+		) {
+			item = new SectionItem(
+				pos,
+				itemPayload.title || 'Section',
+				undefined,
+				itemPayload.color || 'blue',
+				itemPayload.width || 400,
+				itemPayload.height || 300,
 			);
 		} else {
 			item = new StickyNoteItem(

@@ -3,6 +3,7 @@ import {
 	faChevronDown,
 	faFont,
 	faHand,
+	faLayerGroup,
 	faMusic,
 	faNoteSticky,
 	faPlus,
@@ -29,7 +30,7 @@ interface BoardToolbarProps {
 }
 
 /**
- * Floating toolbar component for tool switching (select, hand) and item creation (Text, Sticky Note, Track).
+ * Floating toolbar component for tool switching (select, hand) and item creation (Text, Sticky Note, Track, Section Box).
  */
 export const BoardToolbar = track(function BoardToolbar({
 	onOpenTrackModal,
@@ -41,23 +42,25 @@ export const BoardToolbar = track(function BoardToolbar({
 	const addMenuRef = useRef<HTMLDivElement>(null);
 
 	const selectedShapes = editor.getSelectedShapes();
-	const selectedNotes = selectedShapes.filter((s) => s.type === 'note');
-	const activeNoteColor =
-		selectedNotes.length > 0
-			? (selectedNotes[0].props as any)?.color
+	const colorableShapes = selectedShapes.filter(
+		(s) => s.type === 'note' || s.type === 'section',
+	);
+	const activeColor =
+		colorableShapes.length > 0
+			? (colorableShapes[0].props as any)?.color
 			: undefined;
 
 	const handleColorChange = useCallback(
 		(colorKey: TLDefaultColorStyle) => {
-			selectedNotes.forEach((n) => {
+			colorableShapes.forEach((s) => {
 				editor.updateShape({
-					id: n.id,
-					type: 'note',
+					id: s.id,
+					type: s.type,
 					props: { color: colorKey },
 				});
 			});
 		},
-		[editor, selectedNotes],
+		[editor, colorableShapes],
 	);
 
 	/**
@@ -105,6 +108,32 @@ export const BoardToolbar = track(function BoardToolbar({
 
 		editor.select(newId);
 		editor.setEditingShape(newId);
+		setShowAddMenu(false);
+	}, [editor]);
+
+	/**
+	 * Creates a new section box at the viewport center.
+	 */
+	const handleAddSectionItem = useCallback(() => {
+		const viewportBounds = editor.getViewportPageBounds();
+		const center = viewportBounds.center;
+		const newId = createShapeId();
+
+		editor.createShape({
+			id: newId,
+			type: 'section',
+			x: center.x - 200,
+			y: center.y - 150,
+			props: {
+				title: 'Section',
+				color: 'blue',
+				w: 400,
+				h: 300,
+			},
+		});
+
+		editor.sendToBack([newId]);
+		editor.select(newId);
 		setShowAddMenu(false);
 	}, [editor]);
 
@@ -201,6 +230,14 @@ export const BoardToolbar = track(function BoardToolbar({
 						<button
 							type="button"
 							className="board-toolbar__dropdown-item"
+							onClick={handleAddSectionItem}
+						>
+							<FontAwesomeIcon icon={faLayerGroup} />
+							<span>{t('board.groupItem')}</span>
+						</button>
+						<button
+							type="button"
+							className="board-toolbar__dropdown-item"
 							onClick={handleAddTrackItem}
 						>
 							<FontAwesomeIcon icon={faMusic} />
@@ -210,11 +247,11 @@ export const BoardToolbar = track(function BoardToolbar({
 				)}
 			</div>
 
-			{selectedNotes.length > 0 && (
+			{colorableShapes.length > 0 && (
 				<>
 					<div className="board-toolbar__divider" />
 					<ColorPicker
-						selectedColor={activeNoteColor}
+						selectedColor={activeColor}
 						onSelectColor={handleColorChange}
 						size={18}
 					/>

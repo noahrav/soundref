@@ -4,6 +4,7 @@ import {
 	type TLNoteShape,
 	type TLResizeInfo,
 } from 'tldraw';
+import { SectionShapeUtil } from './SectionShapeUtil';
 import { TrackShapeUtil } from './TrackShapeUtil';
 
 /**
@@ -44,4 +45,8 @@ export class CustomNoteShapeUtil extends NoteShapeUtil {
 /**
  * Registered custom shape utilities array for the tldraw component instance.
  */
-export const customShapeUtils = [CustomNoteShapeUtil, TrackShapeUtil];
+export const customShapeUtils = [
+	CustomNoteShapeUtil,
+	TrackShapeUtil,
+	SectionShapeUtil,
+];

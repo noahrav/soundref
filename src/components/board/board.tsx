@@ -9,6 +9,7 @@ import {
 } from 'tldraw';
 import 'tldraw/tldraw.css';
 import { ProjectService } from '../../api/ProjectService';
+import { SectionItem } from '../../core/model/item/SectionItem';
 import type { StickyNoteItem } from '../../core/model/item/StickyNoteItem';
 import { TextItem } from '../../core/model/item/TextItem';
 import { TrackItem } from '../../core/model/item/TrackItem';
@@ -357,6 +358,24 @@ export default function Board({
 													h: trackItem.width || 200,
 												},
 											});
+										} else if (
+											item instanceof SectionItem ||
+											(item as any).type === 'SectionItem'
+										) {
+											const sectionItem = item as SectionItem;
+											editor.createShape({
+												id: shapeId,
+												type: 'section',
+												x: item.position.x,
+												y: item.position.y,
+												props: {
+													title: sectionItem.title || 'Section',
+													color: (sectionItem.color || 'blue') as any,
+													w: sectionItem.width || 400,
+													h: sectionItem.height || 300,
+												},
+											});
+											editor.sendToBack([shapeId]);
 										} else {
 											const stickyItem = item as StickyNoteItem;
 											const noteContent = stickyItem.content || '';
@@ -459,6 +478,19 @@ export default function Board({
 											loopRegion: p.loopRegion || { start: 0, end: 0 },
 											scale: p.scale || 1,
 											width: p.w || 200,
+										});
+									} else if (shape.type === 'section') {
+										const cleanId = shape.id.replace(/^shape:/, '');
+										const p = shape.props as any;
+										itemsToSync.push({
+											id: cleanId,
+											type: 'SectionItem',
+											x: shape.x,
+											y: shape.y,
+											title: p.title || 'Section',
+											color: p.color || 'blue',
+											width: p.w || 400,
+											height: p.h || 300,
 										});
 									}
 								});

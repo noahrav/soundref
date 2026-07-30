@@ -2,6 +2,7 @@ import type { IconDefinition } from '@fortawesome/free-solid-svg-icons';
 import {
 	faChevronRight,
 	faFont,
+	faLayerGroup,
 	faMusic,
 	faNoteSticky,
 } from '@fortawesome/free-solid-svg-icons';
@@ -103,85 +104,95 @@ export const CustomContextMenu = track(function CustomContextMenu({
 	const selectedShapes = editor.getSelectedShapes();
 	const singleSelectedShape =
 		selectedShapes.length === 1 ? selectedShapes[0] : null;
-	const isTrackSelected = singleSelectedShape?.type === 'track';
-	const hasNotesSelected = selectedShapes.some((s) => s.type === 'note');
+	const hasColorableShapesSelected = selectedShapes.some(
+		(s) => s.type === 'note' || s.type === 'section',
+	);
 
 	/**
 	 * Smart paste handler reading clipboard text content.
 	 * Automatically creates Track shapes for audio files or stream links, or Text shapes otherwise.
 	 */
 	const handlePasteContent = useCallback(async () => {
+		if (!menu) return;
 		try {
 			const text = await navigator.clipboard.readText();
-			if (text) {
-				let isTldrawJson = false;
-				try {
-					const parsed = JSON.parse(text);
-					if (
-						parsed &&
-						typeof parsed === 'object' &&
-						('tldraw' in parsed || 'shapes' in parsed)
-					) {
-						isTldrawJson = true;
-					}
-				} catch {
-					isTldrawJson = false;
+			if (!text) return;
+
+			const point = editor.screenToPage({
+				x: menu.x,
+				y: menu.y,
+			});
+
+			const streamResult = parseStreamUrl(text);
+			const cleanUrl = text.trim();
+			const isAudioFile = /\.(mp3|wav|ogg|flac|aac|m4a)$/i.test(cleanUrl);
+
+			if (streamResult || isAudioFile) {
+				let title = 'Audio';
+				let imageUrl = '';
+				let audioSource = cleanUrl;
+				let sourceType: 'local' | 'stream' = 'local';
+
+				if (streamResult) {
+					sourceType = 'stream';
+					audioSource = text.trim();
+					title =
+						streamResult.type.charAt(0).toUpperCase() +
+						streamResult.type.slice(1);
+					imageUrl = (await fetchCoverArt(audioSource, sourceType)) || '';
 				}
 
-				if (!isTldrawJson) {
-					const targetScreenPoint = menu || {
-						x: window.innerWidth / 2,
-						y: window.innerHeight / 2,
-					};
-					const point = editor.screenToPage(targetScreenPoint);
-					const newId = createShapeId();
-
-					const streamInfo = parseStreamUrl(text);
-					const isAudioFile = text.match(
-						/\.(mp3|wav|ogg|flac|m4a|aac)(\?.*)?$/i,
-					);
-
-					if (streamInfo.isStream || isAudioFile) {
-						const coverUrl = await fetchCoverArt(text);
-						const titleFromUrl =
-							text.split('/').pop()?.split('?')[0] || 'Track';
-						editor.createShape({
-							id: newId,
-							type: 'track',
-							x: point.x - 100,
-							y: point.y - 100,
-							props: {
-								title: titleFromUrl,
-								imageUrl: coverUrl,
-								audioSource: text,
-								sourceType: streamInfo.isStream ? 'stream' : 'local',
-								playMode: 'oneshot',
-								loopRegion: { start: 0, end: 0 },
-								w: 200,
-								h: 200,
-							},
-						});
-					} else {
-						editor.createShape({
-							id: newId,
-							type: 'text',
-							x: point.x - 100,
-							y: point.y - 20,
-							props: {
-								richText: toRichText(text),
-								autoSize: true,
-							},
-						});
-					}
-					editor.select(newId);
-					return;
-				}
+				const newId = createShapeId();
+				editor.createShape({
+					id: newId,
+					type: 'track',
+					x: point.x - 100,
+					y: point.y - 100,
+					props: {
+						title,
+						imageUrl,
+						audioSource,
+						sourceType,
+						playMode: 'oneshot',
+						loopRegion: { start: 0, end: 0 },
+						w: 200,
+						h: 200,
+					},
+				});
+				editor.select(newId);
+			} else {
+				const newId = createShapeId();
+				editor.createShape({
+					id: newId,
+					type: 'text',
+					x: point.x - 100,
+					y: point.y - 20,
+					props: {
+						richText: toRichText(text),
+						autoSize: true,
+					},
+				});
+				editor.select(newId);
 			}
-		} catch (e) {
-			console.warn('[ContextMenu] Clipboard read fallback to tldraw paste:', e);
+		} catch (err) {
+			console.warn('[ContextMenu] Clipboard paste failed:', err);
 		}
+	}, [editor, menu]);
+
+	const handleCopyContent = useCallback(() => {
+		actions.copy?.onSelect('context-menu');
+	}, [actions]);
+
+	const handleCutContent = useCallback(() => {
+		actions.cut?.onSelect('context-menu');
+	}, [actions]);
+
+	const handlePasteFromMenu = useCallback(() => {
 		actions.paste?.onSelect('context-menu');
 	}, [actions, editor, menu]);
+
+	const isTrackSelected = singleSelectedShape?.type === 'track';
+	const isSectionSelected = singleSelectedShape?.type === 'section';
 
 	const selectionGroups: MenuGroupDef[] = hasSelection
 		? [
@@ -209,7 +220,25 @@ export const CustomContextMenu = track(function CustomContextMenu({
 							},
 						]
 					: []),
-				...(hasNotesSelected
+				...(isSectionSelected
+					? [
+							{
+								id: 'section-edit',
+								items: [
+									{
+										id: 'rename-section',
+										label: t('contextMenu.renameSection'),
+										onSelect: () => {
+											if (singleSelectedShape) {
+												editor.setEditingShape(singleSelectedShape.id);
+											}
+										},
+									},
+								],
+							},
+						]
+					: []),
+				...(hasColorableShapesSelected
 					? [
 							{
 								id: 'note-edit',
@@ -223,13 +252,15 @@ export const CustomContextMenu = track(function CustomContextMenu({
 											label: t(`contextMenu.color_${c.key}`),
 											colorDot: c.hex,
 											onSelect: () => {
-												const notes = editor
+												const targets = editor
 													.getSelectedShapes()
-													.filter((s) => s.type === 'note');
-												notes.forEach((note) => {
+													.filter(
+														(s) => s.type === 'note' || s.type === 'section',
+													);
+												targets.forEach((shape) => {
 													editor.updateShape({
-														id: note.id,
-														type: 'note',
+														id: shape.id,
+														type: shape.type,
 														props: { color: c.key },
 													});
 												});
@@ -372,6 +403,34 @@ export const CustomContextMenu = track(function CustomContextMenu({
 											});
 											editor.select(newId);
 											editor.setEditingShape(newId);
+										}
+									},
+								},
+								{
+									id: 'add-section',
+									label: t('board.groupItem'),
+									icon: faLayerGroup,
+									onSelect: () => {
+										if (menu) {
+											const point = editor.screenToPage({
+												x: menu.x,
+												y: menu.y,
+											});
+											const newId = createShapeId();
+											editor.createShape({
+												id: newId,
+												type: 'section',
+												x: point.x - 200,
+												y: point.y - 150,
+												props: {
+													title: 'Section',
+													color: 'blue',
+													w: 400,
+													h: 300,
+												},
+											});
+											editor.sendToBack([newId]);
+											editor.select(newId);
 										}
 									},
 								},
