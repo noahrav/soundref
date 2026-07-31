@@ -1,0 +1,59 @@
+.section-shape {
+  position: absolute;
+  inset: 0;
+  border-radius: 0;
+  box-sizing: border-box;
+  pointer-events: none;
+  user-select: none;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+
+  &__outline {
+    position: absolute;
+    inset: 0;
+    border: 2px dashed;
+    border-radius: 0;
+    box-sizing: border-box;
+    pointer-events: auto;
+    cursor: move;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+
+  &__header {
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 0;
+    padding: 0 4px;
+    border-radius: 0;
+    font-size: 0.875rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    display: flex;
+    align-items: center;
+    max-width: 100%;
+    z-index: 10;
+    cursor: pointer;
+    pointer-events: auto;
+  }
+
+  &__title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    font-weight: 700;
+  }
+
+  &__title-input {
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 0.875rem;
+    font-weight: 700;
+    font-family: inherit;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    min-width: 60px;
+    pointer-events: auto;
+  }
+}

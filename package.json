@@ -1,0 +1,38 @@
+{
+	"name": "soundref",
+	"private": true,
+	"version": "0.1.0",
+	"type": "module",
+	"engines": {
+		"node": ">=24"
+	},
+	"scripts": {
+		"dev": "vite",
+		"build": "tsc && vite build",
+		"preview": "vite preview",
+		"tauri": "tauri",
+		"format": "pnpx @biomejs/biome check --write"
+	},
+	"dependencies": {
+		"@fortawesome/fontawesome-svg-core": "^7.3.1",
+		"@fortawesome/free-solid-svg-icons": "^7.3.1",
+		"@fortawesome/react-fontawesome": "^3.5.0",
+		"@tauri-apps/api": "^2",
+		"@tauri-apps/plugin-opener": "^2",
+		"i18next": "^26.3.6",
+		"react": "^19.1.0",
+		"react-dom": "^19.1.0",
+		"react-i18next": "^17.0.11",
+		"tldraw": "^5.2.5"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.5.5",
+		"@tauri-apps/cli": "^2",
+		"@types/react": "^19.1.8",
+		"@types/react-dom": "^19.1.6",
+		"@vitejs/plugin-react": "^4.6.0",
+		"sass-embedded": "^1.100.0",
+		"typescript": "~5.8.3",
+		"vite": "^7.0.4"
+	}
+}
