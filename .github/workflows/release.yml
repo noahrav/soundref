@@ -19,10 +19,13 @@ jobs:
       matrix:
         include:
           - platform: 'macos-latest'
+            target_os: 'macos-arm64'
             args: '--target aarch64-apple-darwin'
           - platform: 'ubuntu-22.04'
+            target_os: 'linux-x64'
             args: ''
           - platform: 'windows-latest'
+            target_os: 'windows-x64'
             args: ''
 
     runs-on: ${{ matrix.platform }}
@@ -67,8 +70,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: v__VERSION__
-          releaseName: 'soundref v__VERSION__'
-          releaseBody: 'Voir les assets ci-dessous pour télécharger soundref.'
+          releaseName: 'SoundRef v__VERSION__'
+          releaseBody: 'Voir les assets ci-dessous pour télécharger SoundRef.'
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
