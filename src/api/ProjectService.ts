@@ -21,6 +21,7 @@ import {
 	formatSoundrefJsonPath,
 	ProjectStorage,
 } from '../core/persistence/ProjectStorage';
+import { clearBlobUrlCache } from '../core/utils/mediaUtils';
 import i18n from '../i18n';
 
 /**
@@ -56,6 +57,15 @@ export class ProjectService {
 	}
 
 	/**
+	 * Clears the currently active project and revokes cached blob URLs.
+	 */
+	public closeActiveProject(): void {
+		this.activeProject = null;
+		CommandManager.instance().clear();
+		clearBlobUrlCache();
+	}
+
+	/**
 	 * Helper method to remove tldraw "page:" prefix from workspace IDs.
 	 * @param id Raw ID string.
 	 * @returns ID string without page: prefix.
@@ -73,6 +83,8 @@ export class ProjectService {
 		if (this.activeProject?.id === projectId) {
 			return this.activeProject;
 		}
+
+		clearBlobUrlCache();
 
 		const knownList = await ProjectStorage.getKnownProjects();
 		const meta = knownList.find((p) => p.id === projectId);
@@ -162,7 +174,7 @@ export class ProjectService {
 	 */
 	public async deleteProject(id: string): Promise<void> {
 		if (this.activeProject?.id === id) {
-			this.activeProject = null;
+			this.closeActiveProject();
 		}
 		await ProjectStorage.removeProjectFromRegistry(id);
 	}

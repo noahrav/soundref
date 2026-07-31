@@ -145,3 +145,36 @@ export async function getBlobUrlForFile(
 
 	return null;
 }
+
+/**
+ * Revokes a single cached Blob URL for a given file path and deletes it from cache.
+ * @param path File system path string.
+ */
+export function revokeBlobUrlForFile(path: string | undefined | null): void {
+	if (!path) return;
+	let cleanPath = path.trim();
+	if (cleanPath.startsWith('file://')) {
+		cleanPath = cleanPath.replace(/^file:\/\//, '');
+	}
+
+	const cached = blobUrlCache.get(cleanPath);
+	if (cached) {
+		if (cached.startsWith('blob:')) {
+			URL.revokeObjectURL(cached);
+		}
+		blobUrlCache.delete(cleanPath);
+	}
+}
+
+/**
+ * Revokes all cached Blob URLs and clears the blobUrlCache Map.
+ * Prevents memory leaks when switching projects or unmounting boards.
+ */
+export function clearBlobUrlCache(): void {
+	blobUrlCache.forEach((url) => {
+		if (url.startsWith('blob:')) {
+			URL.revokeObjectURL(url);
+		}
+	});
+	blobUrlCache.clear();
+}

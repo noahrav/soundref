@@ -135,8 +135,7 @@ export function SectionComponent({ shape }: SectionComponentProps) {
 			<div
 				className="section-shape__header"
 				style={{
-					backgroundColor: colorObj.hex,
-					color: shape.props.color === 'yellow' ? '#111111' : '#ffffff',
+					color: colorObj.hex,
 				}}
 				onDoubleClick={startEditing}
 			>
@@ -146,7 +145,7 @@ export function SectionComponent({ shape }: SectionComponentProps) {
 						type="text"
 						className="section-shape__title-input"
 						style={{
-							color: shape.props.color === 'yellow' ? '#111111' : '#ffffff',
+							color: colorObj.hex,
 						}}
 						value={titleInput}
 						onChange={handleTitleChange}

@@ -1,5 +1,7 @@
 import type { BoardItem } from '../../model/item/BoardItem';
+import { TrackItem } from '../../model/item/TrackItem';
 import type { Workspace } from '../../model/Workspace';
+import { revokeBlobUrlForFile } from '../../utils/mediaUtils';
 import { Command } from '../Command';
 
 /**
@@ -30,6 +32,12 @@ export class DeleteItemCommand extends Command {
 	 */
 	public execute(): void {
 		if (this.itemToDelete) {
+			if (
+				this.itemToDelete instanceof TrackItem &&
+				this.itemToDelete.audioSource
+			) {
+				revokeBlobUrlForFile(this.itemToDelete.audioSource);
+			}
 			this.workspace.deleteBoardItem(this.itemToDelete.id);
 		}
 	}

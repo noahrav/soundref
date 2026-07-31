@@ -234,7 +234,10 @@ export class DesktopBridge {
 				const { invoke } = await import('@tauri-apps/api/core');
 				await invoke('exit_app');
 			} catch (err) {
-				console.error('[DesktopBridge] exit_app invoke error, trying window close:', err);
+				console.error(
+					'[DesktopBridge] exit_app invoke error, trying window close:',
+					err,
+				);
 				try {
 					const { getCurrentWindow } = await import('@tauri-apps/api/window');
 					await getCurrentWindow().close();

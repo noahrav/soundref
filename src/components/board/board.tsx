@@ -13,6 +13,7 @@ import { SectionItem } from '../../core/model/item/SectionItem';
 import { StickyNoteItem } from '../../core/model/item/StickyNoteItem';
 import { TextItem } from '../../core/model/item/TextItem';
 import { TrackItem } from '../../core/model/item/TrackItem';
+import { clearBlobUrlCache } from '../../core/utils/mediaUtils';
 import './board.scss';
 import { CreateProjectModal } from '../project/CreateProjectModal';
 import { BoardToolbar } from './components/BoardToolbar';
@@ -83,6 +84,12 @@ export default function Board({
 	const [initialTrackData, setInitialTrackData] = useState<
 		Partial<TrackFormData>
 	>({});
+
+	useEffect(() => {
+		return () => {
+			clearBlobUrlCache();
+		};
+	}, []);
 
 	/**
 	 * Opens track modal with preset data or position coordinates.
