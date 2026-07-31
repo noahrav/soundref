@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { PageRecordType, type TLPageId, track, useEditor } from 'tldraw';
 import { ProjectService } from '../../../api/ProjectService';
 import { DesktopBridge } from '../../../core/persistence/DesktopBridge';
+import { formatShortcut } from '../../../core/utils/shortcutUtils';
 
 /**
  * Props for PageTabs component.
@@ -211,7 +212,7 @@ export const PageTabs = track(function PageTabs({
 								<FontAwesomeIcon icon={faRotateLeft} />
 								<span>{t('board.undo')}</span>
 							</span>
-							<span className="item-shortcut">Ctrl+Z</span>
+							<span className="item-shortcut">{formatShortcut('Ctrl+Z')}</span>
 						</button>
 
 						<button
@@ -226,7 +227,7 @@ export const PageTabs = track(function PageTabs({
 								<FontAwesomeIcon icon={faRotateRight} />
 								<span>{t('board.redo')}</span>
 							</span>
-							<span className="item-shortcut">Ctrl+Y</span>
+							<span className="item-shortcut">{formatShortcut('Ctrl+Y')}</span>
 						</button>
 
 						<div className="page-tabs__menu-divider" />

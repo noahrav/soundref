@@ -21,6 +21,7 @@ import { NOTE_COLOR_PALETTE } from '../config/colorPalette';
 import { fetchCoverArt, parseStreamUrl } from '../utils/embedUtils';
 import { toRichText } from '../utils/richText';
 import { getSectionBoundsForSelection } from '../utils/sectionUtils';
+import { formatShortcut } from '../../../core/utils/shortcutUtils';
 
 /**
  * Screen position coordinates for contextual popup menu.
@@ -601,7 +602,7 @@ export const CustomContextMenu = track(function CustomContextMenu({
 											<span>{item.label}</span>
 											{item.shortcut && (
 												<span className="context-menu__shortcut">
-													{item.shortcut}
+													{formatShortcut(item.shortcut)}
 												</span>
 											)}
 											{item.submenu && (
