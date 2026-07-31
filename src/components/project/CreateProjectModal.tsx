@@ -16,7 +16,7 @@ interface CreateProjectModalProps {
 function combinePathAndName(baseDir: string, name: string): string {
 	const cleanBase = baseDir.trim().replace(/[/\\]+$/, '');
 	const cleanName = name.trim();
-	if (!cleanBase) return cleanName ? `./${cleanName}` : './';
+	if (!cleanBase) return cleanName ? `~/${cleanName}` : '~/';
 	if (!cleanName) return cleanBase;
 	return `${cleanBase}/${cleanName}`;
 }
@@ -30,8 +30,8 @@ export function CreateProjectModal({
 	const service = ProjectService.instance();
 
 	const [newProjectName, setNewProjectName] = useState('');
-	const [baseParentPath, setBaseParentPath] = useState('./');
-	const [newProjectPath, setNewProjectPath] = useState('./');
+	const [baseParentPath, setBaseParentPath] = useState('~/');
+	const [newProjectPath, setNewProjectPath] = useState('~/');
 	const [isCreating, setIsCreating] = useState(false);
 
 	const handleNameChange = (name: string) => {
