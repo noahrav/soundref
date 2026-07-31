@@ -107,8 +107,19 @@ export function SectionComponent({ shape }: SectionComponentProps) {
 	const startEditing = useCallback(
 		(e: React.SyntheticEvent) => {
 			e.stopPropagation();
+			e.preventDefault();
 			editor.setEditingShape(shape.id);
 			setLocalEditing(true);
+		},
+		[editor, shape.id],
+	);
+
+	const handleHeaderPointerDown = useCallback(
+		(e: React.PointerEvent) => {
+			e.stopPropagation();
+			if (!editor.getSelectedShapeIds().includes(shape.id)) {
+				editor.setSelectedShapes([shape.id]);
+			}
 		},
 		[editor, shape.id],
 	);
@@ -137,6 +148,7 @@ export function SectionComponent({ shape }: SectionComponentProps) {
 				style={{
 					color: colorObj.hex,
 				}}
+				onPointerDown={handleHeaderPointerDown}
 				onDoubleClick={startEditing}
 			>
 				{isEditingTitle ? (
