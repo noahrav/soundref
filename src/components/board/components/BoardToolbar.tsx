@@ -1,4 +1,5 @@
 import { ColorPicker } from '@components/board/components/ColorPicker';
+import { compressImageToDataUrl } from '@components/board/utils/imageCompressor';
 import { toRichText } from '@components/board/utils/richText';
 import { getSectionBoundsForSelection } from '@components/board/utils/sectionUtils';
 import { DesktopBridge } from '@core/persistence/DesktopBridge';
@@ -316,7 +317,8 @@ export const BoardToolbar = track(function BoardToolbar({
 											reader.onload = async (evt) => {
 												if (evt.target?.result) {
 													const src = evt.target.result as string;
-													const dims = await getImageDimensions(src);
+													const compressed = await compressImageToDataUrl(src, 1920, 1920, 0.85);
+													const dims = await getImageDimensions(compressed);
 													const newId = createShapeId();
 													editor.createShape({
 														id: newId,
@@ -324,7 +326,7 @@ export const BoardToolbar = track(function BoardToolbar({
 														x: point.x - dims.w / 2,
 														y: point.y - dims.h / 2,
 														props: {
-															imageUrl: src,
+															imageUrl: compressed,
 															scale: 1,
 															w: dims.w,
 															h: dims.h,

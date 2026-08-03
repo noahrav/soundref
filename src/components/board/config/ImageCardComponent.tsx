@@ -18,12 +18,14 @@ interface ImageCardComponentProps {
  */
 export function ImageCardComponent({ shape }: ImageCardComponentProps) {
 	const resolvedUrl = useMediaUrl(shape.props.imageUrl);
+	const width = Math.min(4096, Math.max(30, shape.props.w || 300));
+	const height = Math.min(4096, Math.max(30, shape.props.h || 300));
 
 	return (
 		<HTMLContainer
 			style={{
-				width: shape.props.w,
-				height: shape.props.h,
+				width,
+				height,
 				pointerEvents: 'all',
 			}}
 		>
@@ -39,6 +41,7 @@ export function ImageCardComponent({ shape }: ImageCardComponentProps) {
 					justifyContent: 'center',
 					position: 'relative',
 					userSelect: 'none',
+					contain: 'strict',
 				}}
 			>
 				{resolvedUrl ? (
@@ -46,12 +49,15 @@ export function ImageCardComponent({ shape }: ImageCardComponentProps) {
 						src={resolvedUrl}
 						alt="Board item"
 						draggable={false}
+						loading="lazy"
+						decoding="async"
 						style={{
 							width: '100%',
 							height: '100%',
 							objectFit: 'contain',
 							display: 'block',
 							pointerEvents: 'none',
+							willChange: 'transform',
 						}}
 						onError={(e) => {
 							e.currentTarget.style.display = 'none';
