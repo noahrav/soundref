@@ -1,6 +1,6 @@
-import type { Project } from '../../model/Project';
-import type { Workspace } from '../../model/Workspace';
-import { Command } from '../Command';
+import { Command } from '@core/command/Command';
+import type { Project } from '@core/model/Project';
+import type { Workspace } from '@core/model/Workspace';
 
 /**
  * Command deleting a workspace tab from a project with undo restore capability.

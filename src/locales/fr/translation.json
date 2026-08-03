@@ -39,6 +39,7 @@
 		"defaultWorkspaceName": "Tableau {{number}}",
 		"backToProjects": "Projets",
 		"backToProjectsTitle": "Menu projet",
+		"changeLanguage": "Langue",
 		"chooseOtherProject": "Choisir un autre projet",
 		"createNewProject": "Créer un nouveau projet",
 		"undo": "Annuler",
@@ -54,6 +55,7 @@
 		"textItem": "Texte",
 		"stickyNote": "Post-it",
 		"trackItem": "Piste audio",
+		"imageItem": "Image",
 		"groupItem": "Section",
 		"addPage": "Ajouter une page",
 		"closePage": "Fermer {{name}}"
@@ -70,6 +72,7 @@
 		"add": "Ajouter",
 		"stickyNote": "Post-it",
 		"trackItem": "Piste audio",
+		"imageItem": "Image",
 		"groupItem": "Section",
 		"editTrack": "Modifier la piste audio",
 		"renameSection": "Renommer la section",
@@ -81,7 +84,12 @@
 		"color_red": "Rouge",
 		"color_violet": "Violet",
 		"color_grey": "Gris",
-		"selectAll": "Tout sélectionner"
+		"selectAll": "Tout sélectionner",
+		"reorder": "Ordre des calques",
+		"bringToFront": "Au premier plan",
+		"bringForward": "Avancer",
+		"sendBackward": "Reculer",
+		"sendToBack": "Au dernier plan"
 	},
 	"miniPlayer": {
 		"play": "Lecture",
@@ -119,5 +127,19 @@
 		"setToStartShort": "Du début",
 		"setToEndShort": "À la fin",
 		"browse": "Parcourir"
+	},
+	"settings": {
+		"title": "Paramètres",
+		"audioStorageTitle": "Mode de stockage des fichiers",
+		"audioStorageDesc": "Choisissez comment les fichiers locaux (audio et image) importés sont enregistrés dans votre projet.",
+		"assetsTitle": "Copier dans le dossier assets/ du projet (Recommandé)",
+		"assetsDesc": "Les fichiers sont copiés dans un sous-dossier assets/ du répertoire projet.",
+		"referenceTitle": "Conserver le lien vers l'emplacement d'origine",
+		"referenceDesc": "Seul le chemin du fichier est enregistré.",
+		"convertBtn": "Convertir les fichiers du projet vers ce mode",
+		"converting": "Conversion en cours...",
+		"convertSuccess_zero": "Tous les fichiers ont déjà été convertis.",
+		"convertSuccess_one": "{{count}} fichier converti avec succès !",
+		"convertSuccess_other": "{{count}} fichiers convertis avec succès !"
 	}
 }

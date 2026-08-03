@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import './App.scss';
-import Board from './components/board/board';
-import { ProjectSelector } from './components/project/ProjectSelector';
+import Board from '@components/board/board';
+import { ProjectSelector } from '@components/project/ProjectSelector';
 
 /**
  * Root Application component switching between ProjectSelector screen and active Board workspace view.

@@ -32,9 +32,7 @@ export function formatShortcut(shortcut: string): string {
 	if (!shortcut) return '';
 
 	if (isMac) {
-		return shortcut
-			.replace(/Ctrl\+/gi, '⌘')
-			.replace(/Shift\+/gi, '⇧');
+		return shortcut.replace(/Ctrl\+/gi, '⌘').replace(/Shift\+/gi, '⇧');
 	}
 
 	let formatted = shortcut;

@@ -1,11 +1,11 @@
+import type { Project } from '@core/model/Project';
+import { DesktopBridge } from '@core/persistence/DesktopBridge';
 import { faFolderOpen, faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { ProjectService } from '@services/ProjectService';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ProjectService } from '../../api/ProjectService';
-import type { Project } from '../../core/model/Project';
-import { DesktopBridge } from '../../core/persistence/DesktopBridge';
-import './CreateProjectModal.scss';
+import '@components/project/CreateProjectModal.scss';
 
 interface CreateProjectModalProps {
 	isOpen: boolean;

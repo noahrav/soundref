@@ -1,4 +1,4 @@
-import { Position } from '../Position';
+import { Position } from '@core/model/Position';
 
 /**
  * Abstract base class representing an item placed on the canvas board.

@@ -1,4 +1,13 @@
 import {
+	extractIframeSrc,
+	fetchCoverArt,
+	isValidLocalAudioSource,
+} from '@components/board/utils/embedUtils';
+import type { LoopRegion } from '@core/model/item/TrackItem';
+import { DesktopBridge } from '@core/persistence/DesktopBridge';
+import { getBlobUrlForFile, getLocalMediaUrl } from '@core/utils/mediaUtils';
+import { getOrExtractWaveformPeaks } from '@core/utils/WaveformService';
+import {
 	faFolderOpen,
 	faImage,
 	faInfoCircle,
@@ -7,21 +16,11 @@ import {
 	faTimes,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { ProjectService } from '@services/ProjectService';
+import { SettingsService } from '@services/SettingsService';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { LoopRegion } from '../../../core/model/item/TrackItem';
-import { DesktopBridge } from '../../../core/persistence/DesktopBridge';
-import {
-	getBlobUrlForFile,
-	getLocalMediaUrl,
-} from '../../../core/utils/mediaUtils';
-import { getOrExtractWaveformPeaks } from '../../../core/utils/WaveformService';
-import {
-	extractIframeSrc,
-	fetchCoverArt,
-	isValidLocalAudioSource,
-} from '../utils/embedUtils';
-import './TrackFormModal.scss';
+import '@components/board/components/TrackFormModal.scss';
 
 /**
  * Form data payload for creating or editing track shapes.
@@ -386,8 +385,22 @@ export function TrackFormModal({
 		const file = e.target.files?.[0];
 		if (file) {
 			const filePath = (file as any).path;
+			const mode = SettingsService.instance().getAudioStorageMode();
+			const activeProj = ProjectService.instance().getActiveProject();
+
 			if (filePath) {
-				setImageUrl(filePath);
+				if (mode === 'assets' && activeProj?.path && DesktopBridge.isTauri()) {
+					const fileName = file.name || 'cover.png';
+					const assetsDir = `${activeProj.path.replace(/[/\\]+$/, '')}/assets`;
+					const targetPath = `${assetsDir}/${fileName}`;
+					void DesktopBridge.createDir(assetsDir).then(() => {
+						void DesktopBridge.copyFile(filePath, targetPath).then(() => {
+							setImageUrl(`assets/${fileName}`);
+						});
+					});
+				} else {
+					setImageUrl(filePath);
+				}
 			} else {
 				const reader = new FileReader();
 				reader.onload = (evt) => {
@@ -405,13 +418,30 @@ export function TrackFormModal({
 		const file = e.target.files?.[0];
 		if (file) {
 			const filePath = (file as any).path;
+			const mode = SettingsService.instance().getAudioStorageMode();
+			const activeProj = ProjectService.instance().getActiveProject();
+
 			if (filePath) {
-				setLocalAudioSource(filePath);
+				if (mode === 'assets' && activeProj?.path && DesktopBridge.isTauri()) {
+					const fileName = file.name || 'audio.mp3';
+					const assetsDir = `${activeProj.path.replace(/[/\\]+$/, '')}/assets`;
+					const targetPath = `${assetsDir}/${fileName}`;
+					void DesktopBridge.createDir(assetsDir).then(() => {
+						void DesktopBridge.copyFile(filePath, targetPath).then(() => {
+							setLocalAudioSource(`assets/${fileName}`);
+						});
+					});
+				} else {
+					setLocalAudioSource(filePath);
+				}
 			} else {
+				// Web fallback: read data URI
 				const reader = new FileReader();
 				reader.onload = (evt) => {
-					if (evt.target?.result)
-						setLocalAudioSource(evt.target.result as string);
+					if (evt.target?.result) {
+						const dataUri = evt.target.result as string;
+						setLocalAudioSource(dataUri);
+					}
 				};
 				reader.readAsDataURL(file);
 			}
@@ -426,14 +456,28 @@ export function TrackFormModal({
 		if (DesktopBridge.isTauri()) {
 			const picked = await DesktopBridge.pickAudioFile();
 			if (picked) {
-				setLocalAudioSource(picked);
+				const mode = SettingsService.instance().getAudioStorageMode();
+				const activeProj = ProjectService.instance().getActiveProject();
+				const fileName = picked.split(/[/\\]/).pop() || 'audio.mp3';
+
 				setLocalPathError(null);
 				if (!title) {
-					const fileName = picked
-						.split(/[/\\]/)
-						.pop()
-						?.replace(/\.[^/.]+$/, '');
-					if (fileName) setTitle(fileName);
+					const nameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
+					if (nameWithoutExt) setTitle(nameWithoutExt);
+				}
+
+				if (mode === 'assets' && activeProj?.path) {
+					const assetsDir = `${activeProj.path.replace(/[/\\]+$/, '')}/assets`;
+					const targetPath = `${assetsDir}/${fileName}`;
+					await DesktopBridge.createDir(assetsDir);
+					const copied = await DesktopBridge.copyFile(picked, targetPath);
+					if (copied) {
+						setLocalAudioSource(`assets/${fileName}`);
+					} else {
+						setLocalAudioSource(picked);
+					}
+				} else {
+					setLocalAudioSource(picked);
 				}
 				return;
 			}
@@ -445,13 +489,27 @@ export function TrackFormModal({
 		if (DesktopBridge.isTauri()) {
 			const picked = await DesktopBridge.pickImageFile();
 			if (picked) {
-				setImageUrl(picked);
+				const mode = SettingsService.instance().getAudioStorageMode();
+				const activeProj = ProjectService.instance().getActiveProject();
+				const fileName = picked.split(/[/\\]/).pop() || 'cover.png';
+
 				if (!title) {
-					const fileName = picked
-						.split(/[/\\]/)
-						.pop()
-						?.replace(/\.[^/.]+$/, '');
-					if (fileName) setTitle(fileName);
+					const nameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
+					if (nameWithoutExt) setTitle(nameWithoutExt);
+				}
+
+				if (mode === 'assets' && activeProj?.path) {
+					const assetsDir = `${activeProj.path.replace(/[/\\]+$/, '')}/assets`;
+					const targetPath = `${assetsDir}/${fileName}`;
+					await DesktopBridge.createDir(assetsDir);
+					const copied = await DesktopBridge.copyFile(picked, targetPath);
+					if (copied) {
+						setImageUrl(`assets/${fileName}`);
+					} else {
+						setImageUrl(picked);
+					}
+				} else {
+					setImageUrl(picked);
 				}
 				return;
 			}

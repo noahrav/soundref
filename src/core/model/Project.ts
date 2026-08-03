@@ -1,4 +1,4 @@
-import type { Workspace } from './Workspace';
+import type { Workspace } from '@core/model/Workspace';
 
 /**
  * Represents a SoundRef project containing workspaces, metadata, and disk folder path.

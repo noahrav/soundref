@@ -1,5 +1,5 @@
-import { Position } from '../Position';
-import { BoardItem } from './BoardItem';
+import { BoardItem } from '@core/model/item/BoardItem';
+import { Position } from '@core/model/Position';
 
 /**
  * Interface defining loop boundary timestamps in seconds.

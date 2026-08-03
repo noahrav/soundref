@@ -170,6 +170,28 @@ export class DesktopBridge {
 	}
 
 	/**
+	 * Copies a file from source path to destination path.
+	 * @param from Source file path.
+	 * @param to Destination file path.
+	 * @returns Promise resolving to true on success, false on failure.
+	 */
+	public static async copyFile(from: string, to: string): Promise<boolean> {
+		if (DesktopBridge.isTauri()) {
+			try {
+				await invoke('copy_file', { from, to });
+				return true;
+			} catch (err) {
+				console.error(
+					`[DesktopBridge] Failed to copy file from ${from} to ${to}:`,
+					err,
+				);
+				return false;
+			}
+		}
+		return false;
+	}
+
+	/**
 	 * Checks if a file or directory exists at specified path.
 	 * @param path File system path string.
 	 * @returns Promise resolving to true if file exists, false otherwise.

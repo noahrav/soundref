@@ -1,5 +1,6 @@
+import { DesktopBridge } from '@core/persistence/DesktopBridge';
+import { ProjectService } from '@services/ProjectService';
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { DesktopBridge } from '../persistence/DesktopBridge';
 
 /**
  * Returns the MIME type string corresponding to a file extension.
@@ -58,6 +59,14 @@ export function getLocalMediaUrl(path: string | undefined | null): string {
 	let cleanPath = path.trim();
 	if (cleanPath.startsWith('file://')) {
 		cleanPath = cleanPath.replace(/^file:\/\//, '');
+	}
+
+	if (!cleanPath.startsWith('/') && !cleanPath.match(/^[a-zA-Z]:[/\\]/)) {
+		const activeProject = ProjectService.instance().getActiveProject();
+		if (activeProject?.path) {
+			const projectDir = activeProject.path.replace(/[/\\]+$/, '');
+			cleanPath = `${projectDir}/${cleanPath}`;
+		}
 	}
 
 	if (DesktopBridge.isTauri()) {
@@ -123,6 +132,14 @@ export async function getBlobUrlForFile(
 		cleanPath = cleanPath.replace(/^file:\/\//, '');
 	}
 
+	if (!cleanPath.startsWith('/') && !cleanPath.match(/^[a-zA-Z]:[/\\]/)) {
+		const activeProject = ProjectService.instance().getActiveProject();
+		if (activeProject?.path) {
+			const projectDir = activeProject.path.replace(/[/\\]+$/, '');
+			cleanPath = `${projectDir}/${cleanPath}`;
+		}
+	}
+
 	const cached = blobUrlCache.get(cleanPath);
 	if (cached) {
 		return cached;
@@ -177,4 +194,34 @@ export function clearBlobUrlCache(): void {
 		}
 	});
 	blobUrlCache.clear();
+}
+
+/**
+ * Loads an image URL asynchronously to measure its natural dimensions.
+ * @param url Media path or URL.
+ * @returns Promise resolving to { w, h } aspect-ratio matched dimensions.
+ */
+export function getImageDimensions(
+	url: string | undefined | null,
+): Promise<{ w: number; h: number }> {
+	return new Promise((resolve) => {
+		const loadableUrl = getLocalMediaUrl(url);
+		if (!loadableUrl) {
+			resolve({ w: 300, h: 300 });
+			return;
+		}
+		const img = new Image();
+		img.onload = () => {
+			if (img.naturalWidth && img.naturalHeight) {
+				const aspect = img.naturalWidth / img.naturalHeight;
+				const defaultW = 400;
+				const defaultH = Math.round(defaultW / aspect);
+				resolve({ w: defaultW, h: defaultH });
+			} else {
+				resolve({ w: 300, h: 300 });
+			}
+		};
+		img.onerror = () => resolve({ w: 300, h: 300 });
+		img.src = loadableUrl;
+	});
 }

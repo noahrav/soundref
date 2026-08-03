@@ -1,3 +1,6 @@
+import type { TLTrackShape } from '@components/board/config/TrackShapeUtil';
+import { audioPlayer } from '@core/audio/audioPlayerStore';
+import { useMediaUrl } from '@core/utils/mediaUtils';
 import {
 	faMusic,
 	faPause,
@@ -7,9 +10,6 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { HTMLContainer, useEditor } from 'tldraw';
-import { audioPlayer } from '../../../core/audio/audioPlayerStore';
-import { useMediaUrl } from '../../../core/utils/mediaUtils';
-import type { TLTrackShape } from './TrackShapeUtil';
 
 /**
  * Renders an animated HTML canvas spectrogram overlay when audio playback is active.

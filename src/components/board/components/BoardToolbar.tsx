@@ -1,8 +1,16 @@
+import { ColorPicker } from '@components/board/components/ColorPicker';
+import { toRichText } from '@components/board/utils/richText';
+import { getSectionBoundsForSelection } from '@components/board/utils/sectionUtils';
+import { DesktopBridge } from '@core/persistence/DesktopBridge';
+import { getImageDimensions } from '@core/utils/mediaUtils';
+import { ProjectService } from '@services/ProjectService';
+import { SettingsService } from '@services/SettingsService';
 import {
 	faArrowPointer,
 	faChevronDown,
 	faFont,
 	faHand,
+	faImage,
 	faLayerGroup,
 	faMusic,
 	faNoteSticky,
@@ -17,10 +25,7 @@ import {
 	track,
 	useEditor,
 } from 'tldraw';
-import { toRichText } from '../utils/richText';
-import { getSectionBoundsForSelection } from '../utils/sectionUtils';
-import { ColorPicker } from './ColorPicker';
-import './BoardToolbar.scss';
+import '@components/board/components/BoardToolbar.scss';
 
 /**
  * Props for BoardToolbar component.
@@ -242,6 +247,97 @@ export const BoardToolbar = track(function BoardToolbar({
 						>
 							<FontAwesomeIcon icon={faMusic} />
 							<span>{t('board.trackItem')}</span>
+						</button>
+						<button
+							type="button"
+							className="board-toolbar__dropdown-item"
+							onClick={async () => {
+								setShowAddMenu(false);
+								const point = {
+									x: editor.getViewportPageBounds().center.x - 150,
+									y: editor.getViewportPageBounds().center.y - 150,
+								};
+
+								if (DesktopBridge.isTauri()) {
+									const picked = await DesktopBridge.pickImageFile();
+									if (picked) {
+										const mode = SettingsService.instance().getAudioStorageMode();
+										const activeProj = ProjectService.instance().getActiveProject();
+										const fileName = picked.split(/[/\\]/).pop() || 'image.png';
+										let finalUrl = picked;
+
+										if (mode === 'assets' && activeProj?.path) {
+											const assetsDir = `${activeProj.path.replace(/[/\\]+$/, '')}/assets`;
+											const targetPath = `${assetsDir}/${fileName}`;
+											await DesktopBridge.createDir(assetsDir);
+											const copied = await DesktopBridge.copyFile(picked, targetPath);
+											if (copied) {
+												finalUrl = `assets/${fileName}`;
+											}
+										}
+
+										const dims = await getImageDimensions(finalUrl);
+										const newId = createShapeId();
+										editor.createShape({
+											id: newId,
+											type: 'image_item',
+											x: point.x - dims.w / 2,
+											y: point.y - dims.h / 2,
+											props: {
+												imageUrl: finalUrl,
+												scale: 1,
+												w: dims.w,
+												h: dims.h,
+											},
+										});
+										editor.sendToBack([newId]);
+										const sectionIds = editor
+											.getCurrentPageShapes()
+											.filter((s) => s.type === 'section')
+											.map((s) => s.id);
+										if (sectionIds.length > 0) {
+											editor.sendToBack(sectionIds);
+										}
+										editor.select(newId);
+									}
+								} else {
+									const input = document.createElement('input');
+									input.type = 'file';
+									input.accept = 'image/*';
+									input.onchange = (e: any) => {
+										const file = e.target?.files?.[0];
+										if (file) {
+											const reader = new FileReader();
+											reader.onload = async (evt) => {
+												if (evt.target?.result) {
+													const src = evt.target.result as string;
+													const dims = await getImageDimensions(src);
+													const newId = createShapeId();
+													editor.createShape({
+														id: newId,
+														type: 'image_item',
+														x: point.x - dims.w / 2,
+														y: point.y - dims.h / 2,
+														props: {
+															imageUrl: src,
+															scale: 1,
+															w: dims.w,
+															h: dims.h,
+														},
+													});
+													editor.sendToBack([newId]);
+													editor.select(newId);
+												}
+											};
+											reader.readAsDataURL(file);
+										}
+									};
+									input.click();
+								}
+							}}
+						>
+							<FontAwesomeIcon icon={faImage} />
+							<span>{t('board.imageItem')}</span>
 						</button>
 					</div>
 				)}

@@ -1,27 +1,28 @@
-import { CommandManager } from '../core/command/CommandManager';
-import { CreateWorkspaceCommand } from '../core/command/project/CreateWorkspaceCommand';
-import { DeleteWorkspaceCommand } from '../core/command/project/DeleteWorkspaceCommand';
-import { UpdateWorkspaceCommand } from '../core/command/project/UpdateWorkspaceCommand';
-import { CreateItemCommand } from '../core/command/workspace/CreateItemCommand';
-import { DeleteItemCommand } from '../core/command/workspace/DeleteItemCommand';
-import { UpdateItemCommand } from '../core/command/workspace/UpdateItemCommand';
-import type { BoardItem } from '../core/model/item/BoardItem';
-import { SectionItem } from '../core/model/item/SectionItem';
-import { StickyNoteItem } from '../core/model/item/StickyNoteItem';
-import { TextItem } from '../core/model/item/TextItem';
-import { TrackItem } from '../core/model/item/TrackItem';
-import { Position } from '../core/model/Position';
-import { Project } from '../core/model/Project';
-import type { Workspace } from '../core/model/Workspace';
+import { CommandManager } from '@core/command/CommandManager';
+import { CreateWorkspaceCommand } from '@core/command/project/CreateWorkspaceCommand';
+import { DeleteWorkspaceCommand } from '@core/command/project/DeleteWorkspaceCommand';
+import { UpdateWorkspaceCommand } from '@core/command/project/UpdateWorkspaceCommand';
+import { CreateItemCommand } from '@core/command/workspace/CreateItemCommand';
+import { DeleteItemCommand } from '@core/command/workspace/DeleteItemCommand';
+import { UpdateItemCommand } from '@core/command/workspace/UpdateItemCommand';
+import type { BoardItem } from '@core/model/item/BoardItem';
+import { ImageItem } from '@core/model/item/ImageItem';
+import { SectionItem } from '@core/model/item/SectionItem';
+import { StickyNoteItem } from '@core/model/item/StickyNoteItem';
+import { TextItem } from '@core/model/item/TextItem';
+import { TrackItem } from '@core/model/item/TrackItem';
+import { Position } from '@core/model/Position';
+import { Project } from '@core/model/Project';
+import type { Workspace } from '@core/model/Workspace';
 import {
 	DesktopBridge,
 	type KnownProjectEntry,
-} from '../core/persistence/DesktopBridge';
+} from '@core/persistence/DesktopBridge';
 import {
 	formatSoundrefJsonPath,
 	ProjectStorage,
-} from '../core/persistence/ProjectStorage';
-import { clearBlobUrlCache } from '../core/utils/mediaUtils';
+} from '@core/persistence/ProjectStorage';
+import { clearBlobUrlCache } from '@core/utils/mediaUtils';
 import i18n from '../i18n';
 
 /**
@@ -353,6 +354,14 @@ export class ProjectService {
 				itemA.loopRegion?.end === itemB.loopRegion?.end
 			);
 		}
+		if (itemA instanceof ImageItem && itemB instanceof ImageItem) {
+			return (
+				itemA.imageUrl === itemB.imageUrl &&
+				itemA.width === itemB.width &&
+				itemA.height === itemB.height &&
+				itemA.scale === itemB.scale
+			);
+		}
 		if (itemA instanceof SectionItem && itemB instanceof SectionItem) {
 			return (
 				itemA.title === itemB.title &&
@@ -416,6 +425,15 @@ export class ProjectService {
 					p.id,
 					p.scale || 1,
 					p.width || 200,
+				);
+			} else if (p.type === 'ImageItem' || p.type === 'image_item' || p.type === 'image') {
+				item = new ImageItem(
+					pos,
+					p.imageUrl || '',
+					p.id,
+					p.scale || 1,
+					p.width || 300,
+					p.height || 300,
 				);
 			} else if (p.type === 'SectionItem' || p.type === 'section') {
 				item = new SectionItem(
@@ -517,6 +535,19 @@ export class ProjectService {
 				undefined,
 				itemPayload.scale || 1,
 				itemPayload.width || 200,
+			);
+		} else if (
+			itemPayload.type === 'ImageItem' ||
+			itemPayload.type === 'image_item' ||
+			itemPayload.type === 'image'
+		) {
+			item = new ImageItem(
+				pos,
+				itemPayload.imageUrl || '',
+				undefined,
+				itemPayload.scale || 1,
+				itemPayload.width || 300,
+				itemPayload.height || 300,
 			);
 		} else if (
 			itemPayload.type === 'SectionItem' ||

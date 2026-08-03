@@ -1,11 +1,12 @@
+import { ImageShapeUtil } from '@components/board/config/ImageShapeUtil';
+import { SectionShapeUtil } from '@components/board/config/SectionShapeUtil';
+import { TrackShapeUtil } from '@components/board/config/TrackShapeUtil';
 import {
 	NoteShapeUtil,
 	resizeScaled,
 	type TLNoteShape,
 	type TLResizeInfo,
 } from 'tldraw';
-import { SectionShapeUtil } from './SectionShapeUtil';
-import { TrackShapeUtil } from './TrackShapeUtil';
 
 /**
  * Custom Note shape utility overriding standard tldraw sticky note behaviors (disabling rotation, enabling scaling).
@@ -49,4 +50,5 @@ export const customShapeUtils = [
 	CustomNoteShapeUtil,
 	TrackShapeUtil,
 	SectionShapeUtil,
+	ImageShapeUtil,
 ];

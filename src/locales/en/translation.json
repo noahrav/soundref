@@ -39,6 +39,7 @@
 		"defaultWorkspaceName": "Board {{number}}",
 		"backToProjects": "Projects",
 		"backToProjectsTitle": "Project menu",
+		"changeLanguage": "Language",
 		"chooseOtherProject": "Choose another project",
 		"createNewProject": "Create new project",
 		"undo": "Undo",
@@ -54,6 +55,7 @@
 		"textItem": "Text",
 		"stickyNote": "Sticky Note",
 		"trackItem": "Audio Track",
+		"imageItem": "Image",
 		"groupItem": "Section",
 		"addPage": "Add page",
 		"closePage": "Close {{name}}"
@@ -70,6 +72,7 @@
 		"add": "Add",
 		"stickyNote": "Sticky Note",
 		"trackItem": "Audio Track",
+		"imageItem": "Image",
 		"groupItem": "Section",
 		"editTrack": "Edit Track",
 		"renameSection": "Rename Section",
@@ -81,7 +84,12 @@
 		"color_red": "Red",
 		"color_violet": "Violet",
 		"color_grey": "Grey",
-		"selectAll": "Select All"
+		"selectAll": "Select All",
+		"reorder": "Layer Order",
+		"bringToFront": "Bring to Front",
+		"bringForward": "Bring Forward",
+		"sendBackward": "Send Backward",
+		"sendToBack": "Send to Back"
 	},
 	"miniPlayer": {
 		"play": "Play",
@@ -119,5 +127,19 @@
 		"setToStartShort": "From start",
 		"setToEndShort": "To end",
 		"browse": "Browse"
+	},
+	"settings": {
+		"title": "Settings",
+		"audioStorageTitle": "Project Files Storage Mode",
+		"audioStorageDesc": "Choose how imported local files (audio and image) are stored in your project.",
+		"assetsTitle": "Copy to project assets/ folder (Recommended)",
+		"assetsDesc": "Audio and image files are copied into an assets/ subfolder within the project directory.",
+		"referenceTitle": "Keep original file link",
+		"referenceDesc": "Only the file path is saved.",
+		"convertBtn": "Convert existing files to selected mode",
+		"converting": "Converting files...",
+		"convertSuccess_zero": "All files have already been converted.",
+		"convertSuccess_one": "Successfully converted {{count}} file!",
+		"convertSuccess_other": "Successfully converted {{count}} files!"
 	}
 }

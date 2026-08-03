@@ -1,5 +1,5 @@
-import { Position } from '../Position';
-import { BoardItem } from './BoardItem';
+import { BoardItem } from '@core/model/item/BoardItem';
+import { Position } from '@core/model/Position';
 
 /**
  * Domain model representing a standalone text block item on the canvas.

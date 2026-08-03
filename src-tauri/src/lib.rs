@@ -95,6 +95,16 @@ fn open_folder(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn copy_file(from: String, to: String) -> Result<(), String> {
+    let path_obj = Path::new(&to);
+    if let Some(parent) = path_obj.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    fs::copy(&from, &to).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
 fn exit_app(app: tauri::AppHandle) {
     app.exit(0);
 }
@@ -114,6 +124,7 @@ pub fn run() {
             file_exists,
             get_projects_registry_path,
             open_folder,
+            copy_file,
             exit_app
         ])
         .run(tauri::generate_context!())
