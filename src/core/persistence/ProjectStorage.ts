@@ -197,13 +197,27 @@ export class ProjectStorage {
 					}
 					if (item instanceof TrackItem || (item as any).type === 'TrackItem') {
 						const trackItem = item as TrackItem;
+						const projectDir = project.path ? project.path.trim().replace(/[/\\]+$/, '') : '';
+						
+						let audioSource = trackItem.audioSource || '';
+						let imageUrl = trackItem.imageUrl || '';
+
+						if (projectDir) {
+							if (audioSource.startsWith(`${projectDir}/assets/`) || audioSource.startsWith(`${projectDir}\\assets\\`)) {
+								audioSource = audioSource.slice(projectDir.length).replace(/^[/\\]+/, '').replace(/\\/g, '/');
+							}
+							if (imageUrl.startsWith(`${projectDir}/assets/`) || imageUrl.startsWith(`${projectDir}\\assets\\`)) {
+								imageUrl = imageUrl.slice(projectDir.length).replace(/^[/\\]+/, '').replace(/\\/g, '/');
+							}
+						}
+
 						return {
 							id: trackItem.id,
 							type: 'TrackItem',
 							position: { x: trackItem.position.x, y: trackItem.position.y },
 							title: trackItem.title || 'Track',
-							imageUrl: trackItem.imageUrl || '',
-							audioSource: trackItem.audioSource || '',
+							imageUrl,
+							audioSource,
 							sourceType: trackItem.sourceType || 'local',
 							playMode: trackItem.playMode || 'oneshot',
 							loopRegion: trackItem.loopRegion || { start: 0, end: 0 },

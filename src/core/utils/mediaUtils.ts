@@ -132,6 +132,14 @@ export async function getBlobUrlForFile(
 		cleanPath = cleanPath.replace(/^file:\/\//, '');
 	}
 
+	if (!cleanPath.startsWith('/') && !cleanPath.match(/^[a-zA-Z]:[/\\]/)) {
+		const activeProject = ProjectService.instance().getActiveProject();
+		if (activeProject?.path) {
+			const projectDir = activeProject.path.replace(/[/\\]+$/, '');
+			cleanPath = `${projectDir}/${cleanPath}`;
+		}
+	}
+
 	const cached = blobUrlCache.get(cleanPath);
 	if (cached) {
 		return cached;

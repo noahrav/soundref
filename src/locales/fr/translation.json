@@ -123,14 +123,14 @@
 	},
 	"settings": {
 		"title": "Paramètres",
-		"audioStorageTitle": "Mode de stockage des fichiers audio",
-		"audioStorageDesc": "Choisissez comment les fichiers audio locaux importés sont enregistrés dans votre projet.",
+		"audioStorageTitle": "Mode de stockage des fichiers",
+		"audioStorageDesc": "Choisissez comment les fichiers locaux (audio et image) importés sont enregistrés dans votre projet.",
 		"assetsTitle": "Copier dans le dossier assets/ du projet (Recommandé)",
-		"assetsDesc": "Les fichiers audio sont copiés dans un sous-dossier assets/ du répertoire projet. Projet portable, chargement rapide et soundref.json reste très léger.",
+		"assetsDesc": "Les fichiers sont copiés dans un sous-dossier assets/ du répertoire projet.",
 		"referenceTitle": "Conserver le lien vers l'emplacement d'origine",
-		"referenceDesc": "Seul le chemin du fichier est enregistré. Le fichier JSON reste léger mais les fichiers audio doivent rester à leur emplacement d'origine.",
-		"convertBtn": "Convertir les pistes du projet vers ce mode",
+		"referenceDesc": "Seul le chemin du fichier est enregistré.",
+		"convertBtn": "Convertir les fichiers du projet vers ce mode",
 		"converting": "Conversion en cours...",
-		"convertSuccess": "{{count}} piste(s) convertie(s) avec succès !"
+		"convertSuccess": "{{count}} fichier(s) converti(s) avec succès !"
 	}
 }

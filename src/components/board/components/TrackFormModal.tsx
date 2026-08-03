@@ -385,8 +385,22 @@ export function TrackFormModal({
 		const file = e.target.files?.[0];
 		if (file) {
 			const filePath = (file as any).path;
+			const mode = SettingsService.instance().getAudioStorageMode();
+			const activeProj = ProjectService.instance().getActiveProject();
+
 			if (filePath) {
-				setImageUrl(filePath);
+				if (mode === 'assets' && activeProj?.path && DesktopBridge.isTauri()) {
+					const fileName = file.name || 'cover.png';
+					const assetsDir = `${activeProj.path.replace(/[/\\]+$/, '')}/assets`;
+					const targetPath = `${assetsDir}/${fileName}`;
+					void DesktopBridge.createDir(assetsDir).then(() => {
+						void DesktopBridge.copyFile(filePath, targetPath).then(() => {
+							setImageUrl(`assets/${fileName}`);
+						});
+					});
+				} else {
+					setImageUrl(filePath);
+				}
 			} else {
 				const reader = new FileReader();
 				reader.onload = (evt) => {
@@ -414,7 +428,7 @@ export function TrackFormModal({
 					const targetPath = `${assetsDir}/${fileName}`;
 					void DesktopBridge.createDir(assetsDir).then(() => {
 						void DesktopBridge.copyFile(filePath, targetPath).then(() => {
-							setLocalAudioSource(targetPath);
+							setLocalAudioSource(`assets/${fileName}`);
 						});
 					});
 				} else {
@@ -458,7 +472,7 @@ export function TrackFormModal({
 					await DesktopBridge.createDir(assetsDir);
 					const copied = await DesktopBridge.copyFile(picked, targetPath);
 					if (copied) {
-						setLocalAudioSource(targetPath);
+						setLocalAudioSource(`assets/${fileName}`);
 					} else {
 						setLocalAudioSource(picked);
 					}
@@ -475,13 +489,27 @@ export function TrackFormModal({
 		if (DesktopBridge.isTauri()) {
 			const picked = await DesktopBridge.pickImageFile();
 			if (picked) {
-				setImageUrl(picked);
+				const mode = SettingsService.instance().getAudioStorageMode();
+				const activeProj = ProjectService.instance().getActiveProject();
+				const fileName = picked.split(/[/\\]/).pop() || 'cover.png';
+
 				if (!title) {
-					const fileName = picked
-						.split(/[/\\]/)
-						.pop()
-						?.replace(/\.[^/.]+$/, '');
-					if (fileName) setTitle(fileName);
+					const nameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
+					if (nameWithoutExt) setTitle(nameWithoutExt);
+				}
+
+				if (mode === 'assets' && activeProj?.path) {
+					const assetsDir = `${activeProj.path.replace(/[/\\]+$/, '')}/assets`;
+					const targetPath = `${assetsDir}/${fileName}`;
+					await DesktopBridge.createDir(assetsDir);
+					const copied = await DesktopBridge.copyFile(picked, targetPath);
+					if (copied) {
+						setImageUrl(`assets/${fileName}`);
+					} else {
+						setImageUrl(picked);
+					}
+				} else {
+					setImageUrl(picked);
 				}
 				return;
 			}

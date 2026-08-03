@@ -56,26 +56,50 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 			for (const item of ws.items.values()) {
 				if (item instanceof TrackItem || (item as any).type === 'TrackItem') {
 					const track = item as TrackItem;
-					if (track.sourceType !== 'local') {
-						continue;
-					}
+					let trackUpdated = false;
 
-					if (targetMode === 'assets') {
-						if (track.audioSource && DesktopBridge.isTauri() && projectDir) {
-							if (!track.audioSource.includes('/assets/')) {
-								const fileName =
-									track.audioSource.split(/[/\\]/).pop() || `${track.id}.mp3`;
-								const targetPath = `${assetsDir}/${fileName}`;
-								const copied = await DesktopBridge.copyFile(
-									track.audioSource,
-									targetPath,
-								);
-								if (copied) {
-									track.audioSource = targetPath;
-									count++;
-								}
+					if (targetMode === 'assets' && DesktopBridge.isTauri() && projectDir) {
+						if (
+							track.sourceType === 'local' &&
+							track.audioSource &&
+							!track.audioSource.includes('/assets/')
+						) {
+							const fileName =
+								track.audioSource.split(/[/\\]/).pop() || `${track.id}.mp3`;
+							const targetPath = `${assetsDir}/${fileName}`;
+							const copied = await DesktopBridge.copyFile(
+								track.audioSource,
+								targetPath,
+							);
+							if (copied) {
+								track.audioSource = `assets/${fileName}`;
+								trackUpdated = true;
 							}
 						}
+
+						if (
+							track.imageUrl &&
+							!track.imageUrl.startsWith('http://') &&
+							!track.imageUrl.startsWith('https://') &&
+							!track.imageUrl.startsWith('data:') &&
+							!track.imageUrl.includes('/assets/')
+						) {
+							const fileName =
+								track.imageUrl.split(/[/\\]/).pop() || `${track.id}_cover.png`;
+							const targetPath = `${assetsDir}/${fileName}`;
+							const copied = await DesktopBridge.copyFile(
+								track.imageUrl,
+								targetPath,
+							);
+							if (copied) {
+								track.imageUrl = `assets/${fileName}`;
+								trackUpdated = true;
+							}
+						}
+					}
+
+					if (trackUpdated) {
+						count++;
 					}
 				}
 			}

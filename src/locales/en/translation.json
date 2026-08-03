@@ -123,14 +123,14 @@
 	},
 	"settings": {
 		"title": "Settings",
-		"audioStorageTitle": "Audio File Storage Mode",
-		"audioStorageDesc": "Choose how imported local audio files are stored in your project.",
+		"audioStorageTitle": "Project Files Storage Mode",
+		"audioStorageDesc": "Choose how imported local files (audio and image) are stored in your project.",
 		"assetsTitle": "Copy to project assets/ folder (Recommended)",
-		"assetsDesc": "Audio files are copied into an assets/ subfolder within the project directory. Highly portable, fast loading, and soundref.json stays lightweight.",
+		"assetsDesc": "Audio and image files are copied into an assets/ subfolder within the project directory.",
 		"referenceTitle": "Keep original file link",
-		"referenceDesc": "Only the file path is saved. soundref.json remains small but files must stay at their original location.",
-		"convertBtn": "Convert existing tracks to selected mode",
-		"converting": "Converting tracks...",
-		"convertSuccess": "Successfully converted {{count}} track(s)!"
+		"referenceDesc": "Only the file path is saved.",
+		"convertBtn": "Convert existing files to selected mode",
+		"converting": "Converting files...",
+		"convertSuccess": "Successfully converted {{count}} file(s)!"
 	}
 }
