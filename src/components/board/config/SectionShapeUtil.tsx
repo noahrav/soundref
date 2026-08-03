@@ -5,7 +5,7 @@ import type {
 	TLShapeId,
 } from 'tldraw';
 import { BaseBoxShapeUtil, Rectangle2d } from 'tldraw';
-import { SectionComponent } from './SectionComponent';
+import { SectionComponent } from '@components/board/config/SectionComponent';
 
 declare module 'tldraw' {
 	export interface TLGlobalShapePropsMap {

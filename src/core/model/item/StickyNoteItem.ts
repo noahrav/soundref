@@ -1,5 +1,5 @@
-import { Position } from '../Position';
-import { BoardItem } from './BoardItem';
+import { Position } from '@core/model/Position';
+import { BoardItem } from '@core/model/item/BoardItem';
 
 /**
  * Domain model representing a sticky note item on the canvas.

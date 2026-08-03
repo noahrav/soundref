@@ -17,10 +17,10 @@ import {
 	track,
 	useEditor,
 } from 'tldraw';
-import { toRichText } from '../utils/richText';
-import { getSectionBoundsForSelection } from '../utils/sectionUtils';
-import { ColorPicker } from './ColorPicker';
-import './BoardToolbar.scss';
+import { toRichText } from '@components/board/utils/richText';
+import { getSectionBoundsForSelection } from '@components/board/utils/sectionUtils';
+import { ColorPicker } from '@components/board/components/ColorPicker';
+import '@components/board/components/BoardToolbar.scss';
 
 /**
  * Props for BoardToolbar component.

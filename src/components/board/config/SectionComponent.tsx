@@ -6,9 +6,9 @@ import {
 	useState,
 } from 'react';
 import { useEditor, useValue } from 'tldraw';
-import { NOTE_COLOR_PALETTE } from './colorPalette';
-import type { TLSectionShape } from './SectionShapeUtil';
-import './SectionComponent.scss';
+import { NOTE_COLOR_PALETTE } from '@components/board/config/colorPalette';
+import type { TLSectionShape } from '@components/board/config/SectionShapeUtil';
+import '@components/board/config/SectionComponent.scss';
 
 /**
  * Props for SectionComponent.

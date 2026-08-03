@@ -1,4 +1,4 @@
-import { Position } from './Position';
+import { Position } from '@core/model/Position';
 
 /**
  * Represents the viewport camera zoom level and pan offset for a workspace canvas.

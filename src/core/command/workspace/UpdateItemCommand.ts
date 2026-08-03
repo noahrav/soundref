@@ -1,6 +1,6 @@
-import type { BoardItem } from '../../model/item/BoardItem';
-import type { Workspace } from '../../model/Workspace';
-import { Command } from '../Command';
+import type { BoardItem } from '@core/model/item/BoardItem';
+import type { Workspace } from '@core/model/Workspace';
+import { Command } from '@core/command/Command';
 
 /**
  * Command updating an existing board item on a workspace canvas with undo/redo capability.

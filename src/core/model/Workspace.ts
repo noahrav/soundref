@@ -1,5 +1,5 @@
-import type { BoardItem } from './item/BoardItem';
-import { ViewportState } from './ViewportState';
+import type { BoardItem } from '@core/model/item/BoardItem';
+import { ViewportState } from '@core/model/ViewportState';
 
 /**
  * Represents an individual workspace canvas page containing items and viewport camera state.

@@ -9,19 +9,19 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { LoopRegion } from '../../../core/model/item/TrackItem';
-import { DesktopBridge } from '../../../core/persistence/DesktopBridge';
+import type { LoopRegion } from '@core/model/item/TrackItem';
+import { DesktopBridge } from '@core/persistence/DesktopBridge';
 import {
 	getBlobUrlForFile,
 	getLocalMediaUrl,
-} from '../../../core/utils/mediaUtils';
-import { getOrExtractWaveformPeaks } from '../../../core/utils/WaveformService';
+} from '@core/utils/mediaUtils';
+import { getOrExtractWaveformPeaks } from '@core/utils/WaveformService';
 import {
 	extractIframeSrc,
 	fetchCoverArt,
 	isValidLocalAudioSource,
-} from '../utils/embedUtils';
-import './TrackFormModal.scss';
+} from '@components/board/utils/embedUtils';
+import '@components/board/components/TrackFormModal.scss';
 
 /**
  * Form data payload for creating or editing track shapes.

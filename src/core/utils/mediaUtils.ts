@@ -1,5 +1,5 @@
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { DesktopBridge } from '../persistence/DesktopBridge';
+import { DesktopBridge } from '@core/persistence/DesktopBridge';
 
 /**
  * Returns the MIME type string corresponding to a file extension.

@@ -1,4 +1,4 @@
-import { DesktopBridge } from '../persistence/DesktopBridge';
+import { DesktopBridge } from '@core/persistence/DesktopBridge';
 
 const peakCache = new Map<string, number[]>();
 const inFlightRequests = new Map<string, Promise<number[]>>();

@@ -12,9 +12,9 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PageRecordType, type TLPageId, track, useEditor } from 'tldraw';
-import { ProjectService } from '../../../api/ProjectService';
-import { DesktopBridge } from '../../../core/persistence/DesktopBridge';
-import { formatShortcut } from '../../../core/utils/shortcutUtils';
+import { ProjectService } from '@services/ProjectService';
+import { DesktopBridge } from '@core/persistence/DesktopBridge';
+import { formatShortcut } from '@core/utils/shortcutUtils';
 
 /**
  * Props for PageTabs component.

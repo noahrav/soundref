@@ -1,7 +1,7 @@
-import type { LoopRegion } from '../model/item/TrackItem';
-import { DesktopBridge } from '../persistence/DesktopBridge';
-import { getBlobUrlForFile, getLocalMediaUrl } from '../utils/mediaUtils';
-import { getOrExtractWaveformPeaks } from '../utils/WaveformService';
+import type { LoopRegion } from '@core/model/item/TrackItem';
+import { DesktopBridge } from '@core/persistence/DesktopBridge';
+import { getBlobUrlForFile, getLocalMediaUrl } from '@core/utils/mediaUtils';
+import { getOrExtractWaveformPeaks } from '@core/utils/WaveformService';
 
 /**
  * Interface representing the data structure for a track currently playing or loaded in the audio player.

@@ -1,13 +1,13 @@
-import type { BoardItem } from '../model/item/BoardItem';
-import { SectionItem } from '../model/item/SectionItem';
-import { StickyNoteItem } from '../model/item/StickyNoteItem';
-import { TextItem } from '../model/item/TextItem';
-import { TrackItem } from '../model/item/TrackItem';
-import { Position } from '../model/Position';
-import { Project } from '../model/Project';
-import { ViewportState } from '../model/ViewportState';
-import { Workspace } from '../model/Workspace';
-import { DesktopBridge, type KnownProjectEntry } from './DesktopBridge';
+import type { BoardItem } from '@core/model/item/BoardItem';
+import { SectionItem } from '@core/model/item/SectionItem';
+import { StickyNoteItem } from '@core/model/item/StickyNoteItem';
+import { TextItem } from '@core/model/item/TextItem';
+import { TrackItem } from '@core/model/item/TrackItem';
+import { Position } from '@core/model/Position';
+import { Project } from '@core/model/Project';
+import { ViewportState } from '@core/model/ViewportState';
+import { Workspace } from '@core/model/Workspace';
+import { DesktopBridge, type KnownProjectEntry } from '@core/persistence/DesktopBridge';
 
 const REGISTRY_KEY = 'soundref_projects_registry';
 

@@ -17,11 +17,11 @@ import {
 	useEditor,
 	useEditorComponents,
 } from 'tldraw';
-import { NOTE_COLOR_PALETTE } from '../config/colorPalette';
-import { fetchCoverArt, parseStreamUrl } from '../utils/embedUtils';
-import { toRichText } from '../utils/richText';
-import { getSectionBoundsForSelection } from '../utils/sectionUtils';
-import { formatShortcut } from '../../../core/utils/shortcutUtils';
+import { NOTE_COLOR_PALETTE } from '@components/board/config/colorPalette';
+import { fetchCoverArt, parseStreamUrl } from '@components/board/utils/embedUtils';
+import { toRichText } from '@components/board/utils/richText';
+import { getSectionBoundsForSelection } from '@components/board/utils/sectionUtils';
+import { formatShortcut } from '@core/utils/shortcutUtils';
 
 /**
  * Screen position coordinates for contextual popup menu.
