@@ -45,6 +45,7 @@
 		"undo": "Undo",
 		"redo": "Redo",
 		"openProjectFolder": "Open project directory",
+		"exportProject": "Export project",
 		"quitApp": "Quit application",
 		"selectTool": "Select",
 		"selectToolTitle": "Select (V)",

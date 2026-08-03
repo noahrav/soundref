@@ -45,6 +45,7 @@
 		"undo": "Annuler",
 		"redo": "Rétablir",
 		"openProjectFolder": "Ouvrir le répertoire du projet",
+		"exportProject": "Exporter le projet",
 		"quitApp": "Quitter le logiciel",
 		"selectTool": "Sélection",
 		"selectToolTitle": "Sélectionner (V)",
