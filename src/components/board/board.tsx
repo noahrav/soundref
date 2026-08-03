@@ -8,19 +8,19 @@ import {
 	Tldraw,
 } from 'tldraw';
 import 'tldraw/tldraw.css';
-import { ProjectService } from '@services/ProjectService';
 import { SectionItem } from '@core/model/item/SectionItem';
 import { StickyNoteItem } from '@core/model/item/StickyNoteItem';
 import { TextItem } from '@core/model/item/TextItem';
 import { TrackItem } from '@core/model/item/TrackItem';
 import { clearBlobUrlCache } from '@core/utils/mediaUtils';
+import { ProjectService } from '@services/ProjectService';
 import '@components/board/board.scss';
-import { ChangeLanguageModal } from '@components/board/components/ChangeLanguageModal';
-import { CreateProjectModal } from '@components/project/CreateProjectModal';
 import { BoardToolbar } from '@components/board/components/BoardToolbar';
+import { ChangeLanguageModal } from '@components/board/components/ChangeLanguageModal';
 import { CustomContextMenu } from '@components/board/components/ContextMenu';
 import { MiniPlayer } from '@components/board/components/MiniPlayer';
 import { PageTabs } from '@components/board/components/PageTabs';
+import { SettingsModal } from '@components/board/components/SettingsModal';
 import {
 	type TrackFormData,
 	TrackFormModal,
@@ -28,8 +28,12 @@ import {
 import { customShapeUtils } from '@components/board/config/customShapes';
 import { uiComponents } from '@components/board/config/ui-components';
 import { uiOverrides } from '@components/board/config/ui-overrides';
-import { fetchCoverArt, parseStreamUrl } from '@components/board/utils/embedUtils';
+import {
+	fetchCoverArt,
+	parseStreamUrl,
+} from '@components/board/utils/embedUtils';
 import { fromRichText, toRichText } from '@components/board/utils/richText';
+import { CreateProjectModal } from '@components/project/CreateProjectModal';
 
 /**
  * Props for Board component.
@@ -78,6 +82,7 @@ export default function Board({
 		useState(false);
 	const [isChangeLanguageModalOpen, setIsChangeLanguageModalOpen] =
 		useState(false);
+	const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 	const [isTrackModalOpen, setIsTrackModalOpen] = useState(false);
 	const [trackModalPos, setTrackModalPos] = useState<{
 		x: number;
@@ -1090,6 +1095,7 @@ export default function Board({
 					onBackToProjects={onBackToProjects}
 					onOpenCreateProjectModal={() => setIsCreateProjectModalOpen(true)}
 					onOpenChangeLanguageModal={() => setIsChangeLanguageModalOpen(true)}
+					onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
 				/>
 				<MiniPlayer />
 				<BoardToolbar onOpenTrackModal={handleOpenTrackModal} />
@@ -1114,6 +1120,11 @@ export default function Board({
 			<ChangeLanguageModal
 				isOpen={isChangeLanguageModalOpen}
 				onClose={() => setIsChangeLanguageModalOpen(false)}
+			/>
+
+			<SettingsModal
+				isOpen={isSettingsModalOpen}
+				onClose={() => setIsSettingsModalOpen(false)}
 			/>
 		</div>
 	);

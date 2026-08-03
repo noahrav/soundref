@@ -1,6 +1,6 @@
-import type { TLComponents } from 'tldraw';
 import { CustomContextMenu } from '@components/board/components/ContextMenu';
 import { DotGrid } from '@components/board/components/DotGrid';
+import type { TLComponents } from 'tldraw';
 
 /**
  * Custom UI component overrides object for tldraw canvas configuration.

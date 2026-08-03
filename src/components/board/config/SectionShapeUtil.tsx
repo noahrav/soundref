@@ -1,3 +1,4 @@
+import { SectionComponent } from '@components/board/config/SectionComponent';
 import type {
 	TLDefaultColorStyle,
 	TLResizeInfo,
@@ -5,7 +6,6 @@ import type {
 	TLShapeId,
 } from 'tldraw';
 import { BaseBoxShapeUtil, Rectangle2d } from 'tldraw';
-import { SectionComponent } from '@components/board/config/SectionComponent';
 
 declare module 'tldraw' {
 	export interface TLGlobalShapePropsMap {

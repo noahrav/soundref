@@ -1,6 +1,6 @@
+import { Command } from '@core/command/Command';
 import type { Project } from '@core/model/Project';
 import { Workspace } from '@core/model/Workspace';
-import { Command } from '@core/command/Command';
 
 /**
  * Command creating a workspace tab inside a project with undo/redo capability.

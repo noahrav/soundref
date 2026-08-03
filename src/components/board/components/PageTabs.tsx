@@ -1,13 +1,9 @@
-import {
-	faBars,
-	faPlus,
-	faXmark,
-} from '@fortawesome/free-solid-svg-icons';
+import { faBars, faPlus, faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { ProjectService } from '@services/ProjectService';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PageRecordType, type TLPageId, track, useEditor } from 'tldraw';
-import { ProjectService } from '@services/ProjectService';
 import { PageTabsMenu } from './PageTabsMenu';
 
 /**
@@ -22,6 +18,8 @@ interface PageTabsProps {
 	onOpenCreateProjectModal?: () => void;
 	/** Callback function to open language change modal */
 	onOpenChangeLanguageModal?: () => void;
+	/** Callback function to open settings modal */
+	onOpenSettingsModal?: () => void;
 }
 
 /**
@@ -33,6 +31,7 @@ export const PageTabs = track(function PageTabs({
 	onBackToProjects,
 	onOpenCreateProjectModal,
 	onOpenChangeLanguageModal,
+	onOpenSettingsModal,
 }: PageTabsProps) {
 	const { t } = useTranslation();
 	const editor = useEditor();
@@ -57,7 +56,6 @@ export const PageTabs = track(function PageTabs({
 		window.addEventListener('mousedown', handleClickOutside);
 		return () => window.removeEventListener('mousedown', handleClickOutside);
 	}, [isMenuOpen]);
-
 
 	/**
 	 * Adds a new workspace page tab to the tldraw editor and project service.
@@ -155,6 +153,7 @@ export const PageTabs = track(function PageTabs({
 						onBackToProjects={onBackToProjects}
 						onOpenCreateProjectModal={onOpenCreateProjectModal}
 						onOpenChangeLanguageModal={onOpenChangeLanguageModal}
+						onOpenSettingsModal={onOpenSettingsModal}
 					/>
 				)}
 			</div>

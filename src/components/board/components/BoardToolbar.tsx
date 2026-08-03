@@ -1,3 +1,6 @@
+import { ColorPicker } from '@components/board/components/ColorPicker';
+import { toRichText } from '@components/board/utils/richText';
+import { getSectionBoundsForSelection } from '@components/board/utils/sectionUtils';
 import {
 	faArrowPointer,
 	faChevronDown,
@@ -17,9 +20,6 @@ import {
 	track,
 	useEditor,
 } from 'tldraw';
-import { toRichText } from '@components/board/utils/richText';
-import { getSectionBoundsForSelection } from '@components/board/utils/sectionUtils';
-import { ColorPicker } from '@components/board/components/ColorPicker';
 import '@components/board/components/BoardToolbar.scss';
 
 /**

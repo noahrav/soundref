@@ -1,5 +1,5 @@
-import type { Project } from '@core/model/Project';
 import { Command } from '@core/command/Command';
+import type { Project } from '@core/model/Project';
 
 export interface WorkspaceStatePayload {
 	name?: string;

@@ -1,3 +1,6 @@
+import { parseStreamUrl } from '@components/board/utils/embedUtils';
+import { audioPlayer } from '@core/audio/audioPlayerStore';
+import { useMediaUrl } from '@core/utils/mediaUtils';
 import {
 	faCrosshairs,
 	faPause,
@@ -9,9 +12,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useEditor } from 'tldraw';
-import { audioPlayer } from '@core/audio/audioPlayerStore';
-import { useMediaUrl } from '@core/utils/mediaUtils';
-import { parseStreamUrl } from '@components/board/utils/embedUtils';
 import '@components/board/components/MiniPlayer.scss';
 
 /**

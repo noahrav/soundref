@@ -1,5 +1,6 @@
-import { convertFileSrc } from '@tauri-apps/api/core';
 import { DesktopBridge } from '@core/persistence/DesktopBridge';
+import { ProjectService } from '@services/ProjectService';
+import { convertFileSrc } from '@tauri-apps/api/core';
 
 /**
  * Returns the MIME type string corresponding to a file extension.
@@ -58,6 +59,14 @@ export function getLocalMediaUrl(path: string | undefined | null): string {
 	let cleanPath = path.trim();
 	if (cleanPath.startsWith('file://')) {
 		cleanPath = cleanPath.replace(/^file:\/\//, '');
+	}
+
+	if (!cleanPath.startsWith('/') && !cleanPath.match(/^[a-zA-Z]:[/\\]/)) {
+		const activeProject = ProjectService.instance().getActiveProject();
+		if (activeProject?.path) {
+			const projectDir = activeProject.path.replace(/[/\\]+$/, '');
+			cleanPath = `${projectDir}/${cleanPath}`;
+		}
 	}
 
 	if (DesktopBridge.isTauri()) {

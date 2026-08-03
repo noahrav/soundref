@@ -1,10 +1,10 @@
-import { faFolderOpen, faXmark } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { useCallback, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { ProjectService } from '@services/ProjectService';
 import type { Project } from '@core/model/Project';
 import { DesktopBridge } from '@core/persistence/DesktopBridge';
+import { faFolderOpen, faXmark } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { ProjectService } from '@services/ProjectService';
+import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import '@components/project/CreateProjectModal.scss';
 
 interface CreateProjectModalProps {

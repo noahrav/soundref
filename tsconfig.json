@@ -22,9 +22,9 @@
 
 		/* Aliases */
 		"paths": {
-      		"@components/*": ["./src/components/*"],
-      		"@core/*": ["./src/core/*"],
-      		"@locales/*": ["./src/locales/*"],
+			"@components/*": ["./src/components/*"],
+			"@core/*": ["./src/core/*"],
+			"@locales/*": ["./src/locales/*"],
 			"@services/*": ["./src/services/*"]
 		}
 	},

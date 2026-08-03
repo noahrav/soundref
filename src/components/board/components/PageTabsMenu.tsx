@@ -1,4 +1,7 @@
+import { DesktopBridge } from '@core/persistence/DesktopBridge';
+import { formatShortcut } from '@core/utils/shortcutUtils';
 import {
+	faCog,
 	faFolderOpen,
 	faFolderTree,
 	faLanguage,
@@ -8,11 +11,9 @@ import {
 	faRotateRight,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { ProjectService } from '@services/ProjectService';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ProjectService } from '@services/ProjectService';
-import { DesktopBridge } from '@core/persistence/DesktopBridge';
-import { formatShortcut } from '@core/utils/shortcutUtils';
 
 /**
  * Props for PageTabsMenu component.
@@ -26,6 +27,8 @@ interface PageTabsMenuProps {
 	onOpenCreateProjectModal?: () => void;
 	/** Callback function to open language change modal */
 	onOpenChangeLanguageModal?: () => void;
+	/** Callback function to open settings modal */
+	onOpenSettingsModal?: () => void;
 }
 
 /**
@@ -37,6 +40,7 @@ export function PageTabsMenu({
 	onBackToProjects,
 	onOpenCreateProjectModal,
 	onOpenChangeLanguageModal,
+	onOpenSettingsModal,
 }: PageTabsMenuProps) {
 	const { t, i18n } = useTranslation();
 	const service = ProjectService.instance();
@@ -127,14 +131,30 @@ export function PageTabsMenu({
 				className="page-tabs__menu-item"
 				onClick={() => {
 					onClose();
-					onOpenChangeLanguageModal?.()
+					onOpenChangeLanguageModal?.();
 				}}
 			>
 				<span className="item-label">
 					<FontAwesomeIcon icon={faLanguage} />
 					<span>{t('board.changeLanguage')}</span>
 				</span>
-				<span className="item-language">{i18n.language.toLocaleUpperCase()}</span>
+				<span className="item-language">
+					{i18n.language.toLocaleUpperCase()}
+				</span>
+			</button>
+
+			<button
+				type="button"
+				className="page-tabs__menu-item"
+				onClick={() => {
+					onClose();
+					onOpenSettingsModal?.();
+				}}
+			>
+				<span className="item-label">
+					<FontAwesomeIcon icon={faCog} />
+					<span>{t('settings.title')}</span>
+				</span>
 			</button>
 
 			<div className="page-tabs__menu-divider" />

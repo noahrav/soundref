@@ -1,5 +1,5 @@
-import type { Position } from '@core/model/Position';
 import { BoardItem } from '@core/model/item/BoardItem';
+import type { Position } from '@core/model/Position';
 
 /**
  * Domain model representing an organizational section container box on the workspace board.

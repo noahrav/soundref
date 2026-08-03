@@ -1,3 +1,5 @@
+import { NOTE_COLOR_PALETTE } from '@components/board/config/colorPalette';
+import type { TLSectionShape } from '@components/board/config/SectionShapeUtil';
 import {
 	useCallback,
 	useEffect,
@@ -6,8 +8,6 @@ import {
 	useState,
 } from 'react';
 import { useEditor, useValue } from 'tldraw';
-import { NOTE_COLOR_PALETTE } from '@components/board/config/colorPalette';
-import type { TLSectionShape } from '@components/board/config/SectionShapeUtil';
 import '@components/board/config/SectionComponent.scss';
 
 /**

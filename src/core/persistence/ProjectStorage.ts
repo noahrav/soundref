@@ -7,7 +7,10 @@ import { Position } from '@core/model/Position';
 import { Project } from '@core/model/Project';
 import { ViewportState } from '@core/model/ViewportState';
 import { Workspace } from '@core/model/Workspace';
-import { DesktopBridge, type KnownProjectEntry } from '@core/persistence/DesktopBridge';
+import {
+	DesktopBridge,
+	type KnownProjectEntry,
+} from '@core/persistence/DesktopBridge';
 
 const REGISTRY_KEY = 'soundref_projects_registry';
 

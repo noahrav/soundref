@@ -120,5 +120,17 @@
 		"setToStartShort": "From start",
 		"setToEndShort": "To end",
 		"browse": "Browse"
+	},
+	"settings": {
+		"title": "Settings",
+		"audioStorageTitle": "Audio File Storage Mode",
+		"audioStorageDesc": "Choose how imported local audio files are stored in your project.",
+		"assetsTitle": "Copy to project assets/ folder (Recommended)",
+		"assetsDesc": "Audio files are copied into an assets/ subfolder within the project directory. Highly portable, fast loading, and soundref.json stays lightweight.",
+		"referenceTitle": "Keep original file link",
+		"referenceDesc": "Only the file path is saved. soundref.json remains small but files must stay at their original location.",
+		"convertBtn": "Convert existing tracks to selected mode",
+		"converting": "Converting tracks...",
+		"convertSuccess": "Successfully converted {{count}} track(s)!"
 	}
 }

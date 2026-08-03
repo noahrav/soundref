@@ -1,3 +1,11 @@
+import { NOTE_COLOR_PALETTE } from '@components/board/config/colorPalette';
+import {
+	fetchCoverArt,
+	parseStreamUrl,
+} from '@components/board/utils/embedUtils';
+import { toRichText } from '@components/board/utils/richText';
+import { getSectionBoundsForSelection } from '@components/board/utils/sectionUtils';
+import { formatShortcut } from '@core/utils/shortcutUtils';
 import type { IconDefinition } from '@fortawesome/free-solid-svg-icons';
 import {
 	faChevronRight,
@@ -17,11 +25,6 @@ import {
 	useEditor,
 	useEditorComponents,
 } from 'tldraw';
-import { NOTE_COLOR_PALETTE } from '@components/board/config/colorPalette';
-import { fetchCoverArt, parseStreamUrl } from '@components/board/utils/embedUtils';
-import { toRichText } from '@components/board/utils/richText';
-import { getSectionBoundsForSelection } from '@components/board/utils/sectionUtils';
-import { formatShortcut } from '@core/utils/shortcutUtils';
 
 /**
  * Screen position coordinates for contextual popup menu.

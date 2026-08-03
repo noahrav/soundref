@@ -2,7 +2,7 @@ import { faCheck, faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useTranslation } from 'react-i18next';
 import '@components/board/components/ChangeLanguageModal.scss';
-import "/node_modules/flag-icons/css/flag-icons.min.css";
+import '/node_modules/flag-icons/css/flag-icons.min.css';
 
 /**
  * Available languages with their display metadata.
@@ -21,7 +21,10 @@ interface ChangeLanguageModalProps {
  * Modal allowing the user to switch the application language.
  * Displays available languages as selectable buttons with the current one highlighted.
  */
-export function ChangeLanguageModal({ isOpen, onClose }: ChangeLanguageModalProps) {
+export function ChangeLanguageModal({
+	isOpen,
+	onClose,
+}: ChangeLanguageModalProps) {
 	const { t, i18n } = useTranslation();
 
 	const handleSelect = (langCode: string) => {

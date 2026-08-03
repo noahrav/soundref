@@ -1,8 +1,8 @@
+import { Command } from '@core/command/Command';
 import type { BoardItem } from '@core/model/item/BoardItem';
 import { TrackItem } from '@core/model/item/TrackItem';
 import type { Workspace } from '@core/model/Workspace';
 import { revokeBlobUrlForFile } from '@core/utils/mediaUtils';
-import { Command } from '@core/command/Command';
 
 /**
  * Command deleting a board item from a workspace canvas with undo restore capability.

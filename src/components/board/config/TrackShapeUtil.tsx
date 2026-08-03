@@ -1,6 +1,6 @@
+import { TrackCardComponent } from '@components/board/config/TrackCardComponent';
 import type { TLResizeInfo, TLShape } from 'tldraw';
 import { BaseBoxShapeUtil, Rectangle2d, resizeScaled } from 'tldraw';
-import { TrackCardComponent } from '@components/board/config/TrackCardComponent';
 
 declare module 'tldraw' {
 	export interface TLGlobalShapePropsMap {

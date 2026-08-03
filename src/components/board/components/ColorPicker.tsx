@@ -1,8 +1,11 @@
+import {
+	type ColorOption,
+	NOTE_COLOR_PALETTE,
+} from '@components/board/config/colorPalette';
 import { faCheck } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useTranslation } from 'react-i18next';
 import type { TLDefaultColorStyle } from 'tldraw';
-import { type ColorOption, NOTE_COLOR_PALETTE } from '@components/board/config/colorPalette';
 import '@components/board/components/ColorPicker.scss';
 
 /**
