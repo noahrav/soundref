@@ -1,4 +1,5 @@
 import type { BoardItem } from '@core/model/item/BoardItem';
+import { ImageItem } from '@core/model/item/ImageItem';
 import { SectionItem } from '@core/model/item/SectionItem';
 import { StickyNoteItem } from '@core/model/item/StickyNoteItem';
 import { TextItem } from '@core/model/item/TextItem';
@@ -41,6 +42,7 @@ export interface ProjectDataJSON {
 			content?: string;
 			scale?: number;
 			width?: number;
+			height?: number;
 			color?: string;
 			title?: string;
 			imageUrl?: string;
@@ -219,13 +221,36 @@ export class ProjectStorage {
 							imageUrl,
 							audioSource,
 							sourceType: trackItem.sourceType || 'local',
-							playMode: trackItem.playMode || 'oneshot',
 							loopRegion: trackItem.loopRegion || { start: 0, end: 0 },
 							scale: trackItem.scale || 1,
 							width: trackItem.width || 200,
 						};
 					}
-					if (item instanceof SectionItem) {
+					if (
+						item instanceof ImageItem ||
+						(item as any).type === 'ImageItem' ||
+						(item as any).type === 'image_item' ||
+						(item as any).type === 'image'
+					) {
+						const imageItem = item as ImageItem;
+						const projectDir = project.path ? project.path.trim().replace(/[/\\]+$/, '') : '';
+						let imageUrl = imageItem.imageUrl || '';
+
+						if (projectDir && (imageUrl.startsWith(`${projectDir}/assets/`) || imageUrl.startsWith(`${projectDir}\\assets\\`))) {
+							imageUrl = imageUrl.slice(projectDir.length).replace(/^[/\\]+/, '').replace(/\\/g, '/');
+						}
+
+						return {
+							id: imageItem.id,
+							type: 'ImageItem',
+							position: { x: imageItem.position.x, y: imageItem.position.y },
+							imageUrl,
+							scale: imageItem.scale || 1,
+							width: imageItem.width || 300,
+							height: imageItem.height || 300,
+						};
+					}
+					if (item instanceof SectionItem || (item as any).type === 'SectionItem') {
 						const sectionItem = item as SectionItem;
 						return {
 							id: sectionItem.id,
@@ -250,37 +275,41 @@ export class ProjectStorage {
 						color: sticky.color || 'yellow',
 					};
 				}),
-			}),
-		);
+			}));
 
 		return {
 			id: project.id,
 			name: project.name,
 			path: project.path,
-			createdAt: project.createdAt,
+			createdAt: project.createdAt || new Date().toISOString(),
 			workspaces: workspacesJson,
 		};
 	}
 
 	/**
-	 * Deserializes a ProjectDataJSON object back into a domain Project instance.
-	 * @param json Serialized ProjectDataJSON structure.
-	 * @returns Hydrated Project instance.
+	 * Deserializes project data JSON structure into domain Project object model.
+	 * @param json ProjectDataJSON data structure.
+	 * @returns Hydrated domain Project instance.
 	 */
 	public static deserializeProject(json: ProjectDataJSON): Project {
-		const workspacesMap = new Map<string, Workspace>();
+		const project = new Project(json.name, json.path, json.id);
+		if (json.createdAt) {
+			project.createdAt = json.createdAt;
+		}
 
-		if (json.workspaces) {
+		if (Array.isArray(json.workspaces)) {
 			json.workspaces.forEach((wsJson) => {
 				const itemsMap = new Map<string, BoardItem>();
-				if (wsJson.items) {
+
+				if (Array.isArray(wsJson.items)) {
 					wsJson.items.forEach((itemJson) => {
 						const pos = new Position(
 							itemJson.position?.x || 0,
 							itemJson.position?.y || 0,
 						);
 						let item: BoardItem;
-						if (itemJson.type === 'TextItem') {
+
+						if (itemJson.type === 'TextItem' || itemJson.type === 'text') {
 							item = new TextItem(
 								pos,
 								itemJson.content || '',
@@ -288,7 +317,7 @@ export class ProjectStorage {
 								itemJson.scale || 1,
 								itemJson.width,
 							);
-						} else if (itemJson.type === 'TrackItem') {
+						} else if (itemJson.type === 'TrackItem' || itemJson.type === 'track') {
 							item = new TrackItem(
 								pos,
 								itemJson.title || 'Track',
@@ -301,7 +330,20 @@ export class ProjectStorage {
 								itemJson.scale || 1,
 								itemJson.width || 200,
 							);
-						} else if (itemJson.type === 'SectionItem') {
+						} else if (
+							itemJson.type === 'ImageItem' ||
+							itemJson.type === 'image_item' ||
+							itemJson.type === 'image'
+						) {
+							item = new ImageItem(
+								pos,
+								itemJson.imageUrl || '',
+								itemJson.id,
+								itemJson.scale || 1,
+								itemJson.width || 300,
+								itemJson.height || 300,
+							);
+						} else if (itemJson.type === 'SectionItem' || itemJson.type === 'section') {
 							item = new SectionItem(
 								pos,
 								itemJson.title || 'Section',
@@ -338,17 +380,11 @@ export class ProjectStorage {
 				);
 
 				const ws = new Workspace(wsJson.name, wsJson.id, viewport, itemsMap);
-				workspacesMap.set(ws.id, ws);
+				project.workspaces.set(ws.id, ws);
 			});
 		}
 
-		return new Project(
-			json.name,
-			json.path,
-			json.id,
-			json.createdAt,
-			workspacesMap,
-		);
+		return project;
 	}
 
 	/**

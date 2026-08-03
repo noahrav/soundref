@@ -5,11 +5,20 @@ import {
 } from '@components/board/utils/embedUtils';
 import { toRichText } from '@components/board/utils/richText';
 import { getSectionBoundsForSelection } from '@components/board/utils/sectionUtils';
+import { DesktopBridge } from '@core/persistence/DesktopBridge';
+import { getImageDimensions } from '@core/utils/mediaUtils';
 import { formatShortcut } from '@core/utils/shortcutUtils';
+import { ProjectService } from '@services/ProjectService';
+import { SettingsService } from '@services/SettingsService';
 import type { IconDefinition } from '@fortawesome/free-solid-svg-icons';
 import {
+	faAngleDoubleDown,
+	faAngleDoubleUp,
+	faArrowDown,
+	faArrowUp,
 	faChevronRight,
 	faFont,
+	faImage,
 	faLayerGroup,
 	faMusic,
 	faNoteSticky,
@@ -131,8 +140,57 @@ export const CustomContextMenu = track(function CustomContextMenu({
 			const streamResult = parseStreamUrl(text);
 			const cleanUrl = text.trim();
 			const isAudioFile = /\.(mp3|wav|ogg|flac|aac|m4a)$/i.test(cleanUrl);
+			const isImageFile =
+				cleanUrl.startsWith('data:image/') ||
+				/\.(png|jpg|jpeg|webp|gif|svg)$/i.test(cleanUrl);
 
-			if (streamResult || isAudioFile) {
+			if (isImageFile) {
+				const mode = SettingsService.instance().getAudioStorageMode();
+				const activeProj = ProjectService.instance().getActiveProject();
+				let finalUrl = cleanUrl;
+
+				if (
+					mode === 'assets' &&
+					activeProj?.path &&
+					DesktopBridge.isTauri() &&
+					!cleanUrl.startsWith('data:') &&
+					!cleanUrl.startsWith('http://') &&
+					!cleanUrl.startsWith('https://')
+				) {
+					const fileName = cleanUrl.split(/[/\\]/).pop() || 'image.png';
+					const assetsDir = `${activeProj.path.replace(/[/\\]+$/, '')}/assets`;
+					const targetPath = `${assetsDir}/${fileName}`;
+					await DesktopBridge.createDir(assetsDir);
+					const copied = await DesktopBridge.copyFile(cleanUrl, targetPath);
+					if (copied) {
+						finalUrl = `assets/${fileName}`;
+					}
+				}
+
+				const dims = await getImageDimensions(finalUrl);
+				const newId = createShapeId();
+				editor.createShape({
+					id: newId,
+					type: 'image_item',
+					x: point.x - dims.w / 2,
+					y: point.y - dims.h / 2,
+					props: {
+						imageUrl: finalUrl,
+						scale: 1,
+						w: dims.w,
+						h: dims.h,
+					},
+				});
+				editor.sendToBack([newId]);
+				const sectionIds = editor
+					.getCurrentPageShapes()
+					.filter((s) => s.type === 'section')
+					.map((s) => s.id);
+				if (sectionIds.length > 0) {
+					editor.sendToBack(sectionIds);
+				}
+				editor.select(newId);
+			} else if (streamResult || isAudioFile) {
 				let title = 'Audio';
 				let imageUrl = '';
 				let audioSource = cleanUrl;
@@ -342,6 +400,73 @@ export const CustomContextMenu = track(function CustomContextMenu({
 								editor.toggleLock(editor.getSelectedShapeIds());
 							},
 						},
+						{
+							id: 'reorder',
+							label: t('contextMenu.reorder'),
+							onSelect: () => {},
+							submenu: [
+								{
+									id: 'bring-to-front',
+									label: t('contextMenu.bringToFront'),
+									icon: faAngleDoubleUp,
+									onSelect: () => {
+										editor.bringToFront(editor.getSelectedShapeIds());
+										const sectionIds = editor
+											.getCurrentPageShapes()
+											.filter((s) => s.type === 'section')
+											.map((s) => s.id);
+										if (sectionIds.length > 0) {
+											editor.sendToBack(sectionIds);
+										}
+									},
+								},
+								{
+									id: 'bring-forward',
+									label: t('contextMenu.bringForward'),
+									icon: faArrowUp,
+									onSelect: () => {
+										editor.bringForward(editor.getSelectedShapeIds());
+										const sectionIds = editor
+											.getCurrentPageShapes()
+											.filter((s) => s.type === 'section')
+											.map((s) => s.id);
+										if (sectionIds.length > 0) {
+											editor.sendToBack(sectionIds);
+										}
+									},
+								},
+								{
+									id: 'send-backward',
+									label: t('contextMenu.sendBackward'),
+									icon: faArrowDown,
+									onSelect: () => {
+										editor.sendBackward(editor.getSelectedShapeIds());
+										const sectionIds = editor
+											.getCurrentPageShapes()
+											.filter((s) => s.type === 'section')
+											.map((s) => s.id);
+										if (sectionIds.length > 0) {
+											editor.sendToBack(sectionIds);
+										}
+									},
+								},
+								{
+									id: 'send-to-back',
+									label: t('contextMenu.sendToBack'),
+									icon: faAngleDoubleDown,
+									onSelect: () => {
+										editor.sendToBack(editor.getSelectedShapeIds());
+										const sectionIds = editor
+											.getCurrentPageShapes()
+											.filter((s) => s.type === 'section')
+											.map((s) => s.id);
+										if (sectionIds.length > 0) {
+											editor.sendToBack(sectionIds);
+										}
+									},
+								},
+							],
+						},
 					],
 				},
 				{
@@ -466,6 +591,88 @@ export const CustomContextMenu = track(function CustomContextMenu({
 												x: point.x - 100,
 												y: point.y - 100,
 											});
+										}
+									},
+								},
+								{
+									id: 'add-image-item',
+									label: t('board.imageItem'),
+									icon: faImage,
+									onSelect: async () => {
+										if (menu) {
+											const point = editor.screenToPage({
+												x: menu.x,
+												y: menu.y,
+											});
+											if (DesktopBridge.isTauri()) {
+												const picked = await DesktopBridge.pickImageFile();
+												if (picked) {
+													const mode = SettingsService.instance().getAudioStorageMode();
+													const activeProj = ProjectService.instance().getActiveProject();
+													const fileName = picked.split(/[/\\]/).pop() || 'image.png';
+													let finalUrl = picked;
+
+													if (mode === 'assets' && activeProj?.path) {
+														const assetsDir = `${activeProj.path.replace(/[/\\]+$/, '')}/assets`;
+														const targetPath = `${assetsDir}/${fileName}`;
+														await DesktopBridge.createDir(assetsDir);
+														const copied = await DesktopBridge.copyFile(picked, targetPath);
+														if (copied) {
+															finalUrl = `assets/${fileName}`;
+														}
+													}
+
+													const dims = await getImageDimensions(finalUrl);
+													const newId = createShapeId();
+													editor.createShape({
+														id: newId,
+														type: 'image_item',
+														x: point.x - dims.w / 2,
+														y: point.y - dims.h / 2,
+														props: {
+															imageUrl: finalUrl,
+															scale: 1,
+															w: dims.w,
+															h: dims.h,
+														},
+													});
+													editor.sendToBack([newId]);
+													editor.select(newId);
+												}
+											} else {
+												const input = document.createElement('input');
+												input.type = 'file';
+												input.accept = 'image/*';
+												input.onchange = (e: any) => {
+													const file = e.target?.files?.[0];
+													if (file) {
+														const reader = new FileReader();
+														reader.onload = async (evt) => {
+															if (evt.target?.result) {
+																const src = evt.target.result as string;
+																const dims = await getImageDimensions(src);
+																const newId = createShapeId();
+																editor.createShape({
+																	id: newId,
+																	type: 'image_item',
+																	x: point.x - dims.w / 2,
+																	y: point.y - dims.h / 2,
+																	props: {
+																		imageUrl: src,
+																		scale: 1,
+																		w: dims.w,
+																		h: dims.h,
+																	},
+																});
+																editor.sendToBack([newId]);
+																editor.select(newId);
+															}
+														};
+														reader.readAsDataURL(file);
+													}
+												};
+												input.click();
+											}
 										}
 									},
 								},

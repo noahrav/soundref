@@ -1,3 +1,4 @@
+import { ImageShapeUtil } from '@components/board/config/ImageShapeUtil';
 import { SectionShapeUtil } from '@components/board/config/SectionShapeUtil';
 import { TrackShapeUtil } from '@components/board/config/TrackShapeUtil';
 import {
@@ -49,4 +50,5 @@ export const customShapeUtils = [
 	CustomNoteShapeUtil,
 	TrackShapeUtil,
 	SectionShapeUtil,
+	ImageShapeUtil,
 ];

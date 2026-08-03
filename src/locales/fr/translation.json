@@ -55,6 +55,7 @@
 		"textItem": "Texte",
 		"stickyNote": "Post-it",
 		"trackItem": "Piste audio",
+		"imageItem": "Image",
 		"groupItem": "Section",
 		"addPage": "Ajouter une page",
 		"closePage": "Fermer {{name}}"
@@ -71,6 +72,7 @@
 		"add": "Ajouter",
 		"stickyNote": "Post-it",
 		"trackItem": "Piste audio",
+		"imageItem": "Image",
 		"groupItem": "Section",
 		"editTrack": "Modifier la piste audio",
 		"renameSection": "Renommer la section",
@@ -82,7 +84,12 @@
 		"color_red": "Rouge",
 		"color_violet": "Violet",
 		"color_grey": "Gris",
-		"selectAll": "Tout sélectionner"
+		"selectAll": "Tout sélectionner",
+		"reorder": "Ordre des calques",
+		"bringToFront": "Au premier plan",
+		"bringForward": "Avancer",
+		"sendBackward": "Reculer",
+		"sendToBack": "Au dernier plan"
 	},
 	"miniPlayer": {
 		"play": "Lecture",

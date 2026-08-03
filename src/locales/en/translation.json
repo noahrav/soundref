@@ -55,6 +55,7 @@
 		"textItem": "Text",
 		"stickyNote": "Sticky Note",
 		"trackItem": "Audio Track",
+		"imageItem": "Image",
 		"groupItem": "Section",
 		"addPage": "Add page",
 		"closePage": "Close {{name}}"
@@ -71,6 +72,7 @@
 		"add": "Add",
 		"stickyNote": "Sticky Note",
 		"trackItem": "Audio Track",
+		"imageItem": "Image",
 		"groupItem": "Section",
 		"editTrack": "Edit Track",
 		"renameSection": "Rename Section",
@@ -82,7 +84,12 @@
 		"color_red": "Red",
 		"color_violet": "Violet",
 		"color_grey": "Grey",
-		"selectAll": "Select All"
+		"selectAll": "Select All",
+		"reorder": "Layer Order",
+		"bringToFront": "Bring to Front",
+		"bringForward": "Bring Forward",
+		"sendBackward": "Send Backward",
+		"sendToBack": "Send to Back"
 	},
 	"miniPlayer": {
 		"play": "Play",

@@ -8,12 +8,15 @@ import {
 	Tldraw,
 } from 'tldraw';
 import 'tldraw/tldraw.css';
+import { ImageItem } from '@core/model/item/ImageItem';
 import { SectionItem } from '@core/model/item/SectionItem';
 import { StickyNoteItem } from '@core/model/item/StickyNoteItem';
 import { TextItem } from '@core/model/item/TextItem';
 import { TrackItem } from '@core/model/item/TrackItem';
-import { clearBlobUrlCache } from '@core/utils/mediaUtils';
+import { DesktopBridge } from '@core/persistence/DesktopBridge';
+import { clearBlobUrlCache, getImageDimensions } from '@core/utils/mediaUtils';
 import { ProjectService } from '@services/ProjectService';
+import { SettingsService } from '@services/SettingsService';
 import '@components/board/board.scss';
 import { BoardToolbar } from '@components/board/components/BoardToolbar';
 import { CustomContextMenu } from '@components/board/components/ContextMenu';
@@ -377,6 +380,24 @@ export default function Board({
 												},
 											});
 										} else if (
+											item instanceof ImageItem ||
+											(item as any).type === 'ImageItem'
+										) {
+											const imageItem = item as ImageItem;
+											editor.createShape({
+												id: shapeId,
+												type: 'image_item',
+												x: item.position.x,
+												y: item.position.y,
+												props: {
+													imageUrl: imageItem.imageUrl || '',
+													scale: imageItem.scale || 1,
+													w: imageItem.width || 300,
+													h: imageItem.height || 300,
+												},
+											});
+											sendShapeToBackAboveSections(editor, shapeId);
+										} else if (
 											item instanceof SectionItem ||
 											(item as any).type === 'SectionItem'
 										) {
@@ -394,7 +415,11 @@ export default function Board({
 												},
 											});
 											editor.sendToBack([shapeId]);
-										} else {
+										} else if (
+											item instanceof StickyNoteItem ||
+											(item as any).type === 'StickyNoteItem' ||
+											(item as any).type === 'note'
+										) {
 											const stickyItem = item as StickyNoteItem;
 											const noteContent = stickyItem.content || '';
 											editor.createShape({
@@ -498,6 +523,19 @@ export default function Board({
 											loopRegion: p.loopRegion || { start: 0, end: 0 },
 											scale: p.scale || 1,
 											width: p.w || 200,
+										});
+									} else if (shape.type === 'image_item') {
+										const cleanId = shape.id.replace(/^shape:/, '');
+										const p = shape.props as any;
+										itemsToSync.push({
+											id: cleanId,
+											type: 'ImageItem',
+											x: shape.x,
+											y: shape.y,
+											imageUrl: p.imageUrl || '',
+											scale: p.scale || 1,
+											width: p.w || 300,
+											height: p.h || 300,
 										});
 									} else if (shape.type === 'section') {
 										const cleanId = shape.id.replace(/^shape:/, '');
@@ -637,6 +675,23 @@ export default function Board({
 								}
 							}
 							if (hasShapeChanges) {
+								const pageShapes = editor.getCurrentPageShapes();
+								const sectionIds = pageShapes
+									.filter((s) => s.type === 'section')
+									.map((s) => s.id);
+								if (sectionIds.length > 0) {
+									const firstNonSection = pageShapes.findIndex((s) => s.type !== 'section');
+									let lastSection = -1;
+									for (let i = pageShapes.length - 1; i >= 0; i--) {
+										if (pageShapes[i].type === 'section') {
+											lastSection = i;
+											break;
+										}
+									}
+									if (firstNonSection !== -1 && lastSection > firstNonSection) {
+										editor.sendToBack(sectionIds);
+									}
+								}
 								syncCurrentPageItemsToDisk();
 							}
 						});
@@ -735,6 +790,24 @@ export default function Board({
 							},
 						});
 					} else if (
+						item instanceof ImageItem ||
+						(item as any).type === 'ImageItem'
+					) {
+						const imageItem = item as ImageItem;
+						editor.createShape({
+							id: shapeId,
+							type: 'image_item',
+							x: imageItem.position.x,
+							y: imageItem.position.y,
+							props: {
+								imageUrl: imageItem.imageUrl || '',
+								scale: imageItem.scale || 1,
+								w: imageItem.width || 300,
+								h: imageItem.height || 300,
+							},
+						});
+						sendShapeToBackAboveSections(editor, shapeId);
+					} else if (
 						item instanceof SectionItem ||
 						(item as any).type === 'SectionItem'
 					) {
@@ -752,7 +825,11 @@ export default function Board({
 							},
 						});
 						editor.sendToBack([shapeId]);
-					} else {
+					} else if (
+						item instanceof StickyNoteItem ||
+						(item as any).type === 'StickyNoteItem' ||
+						(item as any).type === 'note'
+					) {
 						const stickyItem = item as StickyNoteItem;
 						editor.createShape({
 							id: shapeId,
@@ -853,6 +930,27 @@ export default function Board({
 							needsUpdate = true;
 						}
 					} else if (
+						item instanceof ImageItem ||
+						(item as any).type === 'ImageItem'
+					) {
+						const imageItem = item as ImageItem;
+						if (shapeProps.imageUrl !== imageItem.imageUrl) {
+							updateProps.imageUrl = imageItem.imageUrl;
+							needsUpdate = true;
+						}
+						if (
+							shapeProps.w !== imageItem.width ||
+							shapeProps.h !== imageItem.height
+						) {
+							updateProps.w = imageItem.width;
+							updateProps.h = imageItem.height;
+							needsUpdate = true;
+						}
+						if (shapeProps.scale !== imageItem.scale) {
+							updateProps.scale = imageItem.scale;
+							needsUpdate = true;
+						}
+					} else if (
 						item instanceof SectionItem ||
 						(item as any).type === 'SectionItem'
 					) {
@@ -886,6 +984,14 @@ export default function Board({
 					}
 				}
 			});
+
+			const sectionIds = editor
+				.getCurrentPageShapes()
+				.filter((s) => s.type === 'section')
+				.map((s) => s.id);
+			if (sectionIds.length > 0) {
+				editor.sendToBack(sectionIds);
+			}
 		} catch (e) {
 			console.warn('[Board] Error refreshing editor from domain:', e);
 		}
@@ -938,6 +1044,20 @@ export default function Board({
 		return () => window.removeEventListener('keydown', handleKeyDown, true);
 	}, [service]);
 
+	const sendShapeToBackAboveSections = (
+		editor: Editor,
+		shapeId: TLShapeId,
+	) => {
+		editor.sendToBack([shapeId]);
+		const sectionIds = editor
+			.getCurrentPageShapes()
+			.filter((s) => s.type === 'section')
+			.map((s) => s.id);
+		if (sectionIds.length > 0) {
+			editor.sendToBack(sectionIds);
+		}
+	};
+
 	useEffect(() => {
 		const handleGlobalPaste = async (e: ClipboardEvent) => {
 			const target = e.target as HTMLElement;
@@ -948,7 +1068,85 @@ export default function Board({
 			) {
 				return;
 			}
-			const text = e.clipboardData?.getData('text/plain')?.trim();
+			const text = e.clipboardData?.getData('text/plain')?.trim() || '';
+			const files = Array.from(e.clipboardData?.files || []);
+			const imageFile = files.find(
+				(f) =>
+					f.type.startsWith('image/') ||
+					f.name.match(/\.(png|jpg|jpeg|webp|gif|svg)$/i),
+			);
+			const isImageUrl =
+				text.startsWith('data:image/') ||
+				/\.(png|jpg|jpeg|webp|gif|svg)(\?.*)?$/i.test(text);
+
+			if (imageFile || isImageUrl) {
+				e.preventDefault();
+				e.stopPropagation();
+				const editor = editorRef.current;
+				if (!editor) return;
+				const point = editor.inputs.getCurrentPagePoint();
+				const mode = SettingsService.instance().getAudioStorageMode();
+				const activeProj = ProjectService.instance().getActiveProject();
+
+				let finalUrl = text;
+				if (imageFile) {
+					const rawPath = (imageFile as any).path;
+					if (
+						rawPath &&
+						mode === 'assets' &&
+						activeProj?.path &&
+						DesktopBridge.isTauri()
+					) {
+						const fileName = imageFile.name || 'image.png';
+						const assetsDir = `${activeProj.path.replace(/[/\\]+$/, '')}/assets`;
+						const targetPath = `${assetsDir}/${fileName}`;
+						await DesktopBridge.createDir(assetsDir);
+						const copied = await DesktopBridge.copyFile(rawPath, targetPath);
+						finalUrl = copied ? `assets/${fileName}` : rawPath;
+					} else if (rawPath) {
+						finalUrl = rawPath;
+					} else {
+						const reader = new FileReader();
+						reader.onload = async (evt) => {
+							if (evt.target?.result) {
+								const src = evt.target.result as string;
+								const dims = await getImageDimensions(src);
+								const newId = createShapeId();
+								editor.createShape({
+									id: newId,
+									type: 'image_item',
+									x: point.x - dims.w / 2,
+									y: point.y - dims.h / 2,
+									props: {
+										imageUrl: src,
+										scale: 1,
+										w: dims.w,
+										h: dims.h,
+									},
+								});
+								sendShapeToBackAboveSections(editor, newId);
+								editor.select(newId);
+							}
+						};
+						reader.readAsDataURL(imageFile);
+						return;
+					}
+				}
+
+				const dims = await getImageDimensions(finalUrl);
+				const newId = createShapeId();
+				editor.createShape({
+					id: newId,
+					type: 'image_item',
+					x: point.x - dims.w / 2,
+					y: point.y - dims.h / 2,
+					props: { imageUrl: finalUrl, scale: 1, w: dims.w, h: dims.h },
+				});
+				sendShapeToBackAboveSections(editor, newId);
+				editor.select(newId);
+				return;
+			}
+
 			if (!text || !editorRef.current) return;
 
 			const streamInfo = parseStreamUrl(text);
@@ -996,6 +1194,87 @@ export default function Board({
 		(e: React.DragEvent) => {
 			e.preventDefault();
 			const files = Array.from(e.dataTransfer.files);
+			const imageFile = files.find(
+				(f) =>
+					f.type.startsWith('image/') ||
+					f.name.match(/\.(png|jpg|jpeg|webp|gif|svg)$/i),
+			);
+
+			if (imageFile && editorRef.current) {
+				const editor = editorRef.current;
+				const point = editor.screenToPage({ x: e.clientX, y: e.clientY });
+				const rawPath = (imageFile as any).path;
+				const mode = SettingsService.instance().getAudioStorageMode();
+				const activeProj = ProjectService.instance().getActiveProject();
+
+				if (
+					rawPath &&
+					mode === 'assets' &&
+					activeProj?.path &&
+					DesktopBridge.isTauri()
+				) {
+					const fileName = imageFile.name || 'image.png';
+					const assetsDir = `${activeProj.path.replace(/[/\\]+$/, '')}/assets`;
+					const targetPath = `${assetsDir}/${fileName}`;
+					void DesktopBridge.createDir(assetsDir).then(() => {
+						void DesktopBridge.copyFile(rawPath, targetPath).then(
+							async (copied: boolean) => {
+								const finalUrl = copied ? `assets/${fileName}` : rawPath;
+								const dims = await getImageDimensions(finalUrl);
+								const newId = createShapeId();
+								editor.createShape({
+									id: newId,
+									type: 'image_item',
+									x: point.x - dims.w / 2,
+									y: point.y - dims.h / 2,
+									props: { imageUrl: finalUrl, scale: 1, w: dims.w, h: dims.h },
+								});
+								sendShapeToBackAboveSections(editor, newId);
+								editor.select(newId);
+							},
+						);
+					});
+				} else if (rawPath) {
+					void getImageDimensions(rawPath).then((dims) => {
+						const newId = createShapeId();
+						editor.createShape({
+							id: newId,
+							type: 'image_item',
+							x: point.x - dims.w / 2,
+							y: point.y - dims.h / 2,
+							props: { imageUrl: rawPath, scale: 1, w: dims.w, h: dims.h },
+						});
+						sendShapeToBackAboveSections(editor, newId);
+						editor.select(newId);
+					});
+				} else {
+					const reader = new FileReader();
+					reader.onload = async (event) => {
+						if (event.target?.result) {
+							const src = event.target.result as string;
+							const dims = await getImageDimensions(src);
+							const newId = createShapeId();
+							editor.createShape({
+								id: newId,
+								type: 'image_item',
+								x: point.x - dims.w / 2,
+								y: point.y - dims.h / 2,
+								props: {
+									imageUrl: src,
+									scale: 1,
+									w: dims.w,
+									h: dims.h,
+								},
+							});
+							sendShapeToBackAboveSections(editor, newId);
+							editor.select(newId);
+						}
+					};
+					reader.readAsDataURL(imageFile);
+				}
+				return;
+			}
+
 			const audioFile = files.find(
 				(f) =>
 					f.type.startsWith('audio/') ||

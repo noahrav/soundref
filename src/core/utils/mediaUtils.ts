@@ -195,3 +195,33 @@ export function clearBlobUrlCache(): void {
 	});
 	blobUrlCache.clear();
 }
+
+/**
+ * Loads an image URL asynchronously to measure its natural dimensions.
+ * @param url Media path or URL.
+ * @returns Promise resolving to { w, h } aspect-ratio matched dimensions.
+ */
+export function getImageDimensions(
+	url: string | undefined | null,
+): Promise<{ w: number; h: number }> {
+	return new Promise((resolve) => {
+		const loadableUrl = getLocalMediaUrl(url);
+		if (!loadableUrl) {
+			resolve({ w: 300, h: 300 });
+			return;
+		}
+		const img = new Image();
+		img.onload = () => {
+			if (img.naturalWidth && img.naturalHeight) {
+				const aspect = img.naturalWidth / img.naturalHeight;
+				const defaultW = 400;
+				const defaultH = Math.round(defaultW / aspect);
+				resolve({ w: defaultW, h: defaultH });
+			} else {
+				resolve({ w: 300, h: 300 });
+			}
+		};
+		img.onerror = () => resolve({ w: 300, h: 300 });
+		img.src = loadableUrl;
+	});
+}

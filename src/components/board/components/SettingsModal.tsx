@@ -1,3 +1,4 @@
+import { ImageItem } from '@core/model/item/ImageItem';
 import { TrackItem } from '@core/model/item/TrackItem';
 import { DesktopBridge } from '@core/persistence/DesktopBridge';
 import { ProjectStorage } from '@core/persistence/ProjectStorage';
@@ -109,6 +110,29 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
 					if (trackUpdated) {
 						count++;
+					}
+				} else if (item instanceof ImageItem || (item as any).type === 'ImageItem') {
+					const img = item as ImageItem;
+					if (targetMode === 'assets' && DesktopBridge.isTauri() && projectDir) {
+						if (
+							img.imageUrl &&
+							!img.imageUrl.startsWith('http://') &&
+							!img.imageUrl.startsWith('https://') &&
+							!img.imageUrl.startsWith('data:') &&
+							!img.imageUrl.includes('/assets/')
+						) {
+							const fileName =
+								img.imageUrl.split(/[/\\]/).pop() || `${img.id}_img.png`;
+							const targetPath = `${assetsDir}/${fileName}`;
+							const copied = await DesktopBridge.copyFile(
+								img.imageUrl,
+								targetPath,
+							);
+							if (copied) {
+								img.imageUrl = `assets/${fileName}`;
+								count++;
+							}
+						}
 					}
 				}
 			}

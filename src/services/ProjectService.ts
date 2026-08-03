@@ -6,6 +6,7 @@ import { CreateItemCommand } from '@core/command/workspace/CreateItemCommand';
 import { DeleteItemCommand } from '@core/command/workspace/DeleteItemCommand';
 import { UpdateItemCommand } from '@core/command/workspace/UpdateItemCommand';
 import type { BoardItem } from '@core/model/item/BoardItem';
+import { ImageItem } from '@core/model/item/ImageItem';
 import { SectionItem } from '@core/model/item/SectionItem';
 import { StickyNoteItem } from '@core/model/item/StickyNoteItem';
 import { TextItem } from '@core/model/item/TextItem';
@@ -353,6 +354,14 @@ export class ProjectService {
 				itemA.loopRegion?.end === itemB.loopRegion?.end
 			);
 		}
+		if (itemA instanceof ImageItem && itemB instanceof ImageItem) {
+			return (
+				itemA.imageUrl === itemB.imageUrl &&
+				itemA.width === itemB.width &&
+				itemA.height === itemB.height &&
+				itemA.scale === itemB.scale
+			);
+		}
 		if (itemA instanceof SectionItem && itemB instanceof SectionItem) {
 			return (
 				itemA.title === itemB.title &&
@@ -416,6 +425,15 @@ export class ProjectService {
 					p.id,
 					p.scale || 1,
 					p.width || 200,
+				);
+			} else if (p.type === 'ImageItem' || p.type === 'image_item' || p.type === 'image') {
+				item = new ImageItem(
+					pos,
+					p.imageUrl || '',
+					p.id,
+					p.scale || 1,
+					p.width || 300,
+					p.height || 300,
 				);
 			} else if (p.type === 'SectionItem' || p.type === 'section') {
 				item = new SectionItem(
@@ -517,6 +535,19 @@ export class ProjectService {
 				undefined,
 				itemPayload.scale || 1,
 				itemPayload.width || 200,
+			);
+		} else if (
+			itemPayload.type === 'ImageItem' ||
+			itemPayload.type === 'image_item' ||
+			itemPayload.type === 'image'
+		) {
+			item = new ImageItem(
+				pos,
+				itemPayload.imageUrl || '',
+				undefined,
+				itemPayload.scale || 1,
+				itemPayload.width || 300,
+				itemPayload.height || 300,
 			);
 		} else if (
 			itemPayload.type === 'SectionItem' ||
