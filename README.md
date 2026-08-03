@@ -4,9 +4,7 @@
 
 Built with **Tauri v2**, **React 19**, **TypeScript**, **tldraw**, and **Rust**.
 
----
-
-## Core Features
+## Core features
 
 * **Audio tracks**:
   * Import and play local audio files (`.wav`, `.mp3`, `.flac`, `.ogg`, `.m4a`, `.aac`, `.aiff`, etc.).
@@ -17,7 +15,7 @@ Built with **Tauri v2**, **React 19**, **TypeScript**, **tldraw**, and **Rust**.
   * One-shot and Loop playback modes.
   * Precise loop region configuration (start and end markers in seconds with quick adjustment buttons).
 
-* **Interactive canvas (whiteboard)**:
+* **Interactive whiteboard canvas**:
   * Smooth visual navigation: pan, zoom, multi-selection, locking, and element grouping/ungrouping.
   * Add sticky notes with custom colors, text blocks, section groups, and audio track cards.
   * Handy keyboard shortcuts (`V` for select, `H` for hand/pan navigation, etc.).
@@ -37,8 +35,6 @@ Built with **Tauri v2**, **React 19**, **TypeScript**, **tldraw**, and **Rust**.
 
 > All your project data is stored within a shareable `soundref.json` file containing all of your project's information.
 
----
-
 ## Build & installation guide
 
 ### 1. Prerequisites
@@ -49,7 +45,7 @@ Ensure you have the following tools installed on your system:
 * **pnpm** (or npm, yarn, any package manager will work)
 * **Rust & Cargo** (for building the Tauri backend)
 
-#### System Dependencies for Tauri v2:
+#### System dependencies:
 
 * **Linux (Ubuntu/Debian)**:
   ```bash
@@ -64,8 +60,6 @@ Ensure you have the following tools installed on your system:
 * **Windows**:
   Install [Visual Studio C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) and [WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/).
 
----
-
 ### 2. Clone and install dependencies
 
 ```bash
@@ -76,8 +70,6 @@ cd soundref
 # Install JavaScript/TypeScript dependencies with pnpm
 pnpm install
 ```
-
----
 
 ### 3. Run in development mode
 
@@ -93,8 +85,6 @@ If you want to test the user interface in a web browser without launching the Ta
 pnpm dev
 ```
 
----
-
 ### 4. Build for production
 
 #### Build the desktop executable (Tauri)
@@ -107,15 +97,11 @@ The compiled output will be located in:
 src-tauri/target/release/bundle/
 ```
 
----
-
-## Useful Commands
+## Useful commands
 
 * **`pnpm format`**: Format code using Biome.
 * **`pnpm preview`**: Preview the production web build locally.
 
----
-
 ## License
 
-This project is licensed under the terms specified in the **GNU GPL v3** Licence. See the `LICENSE` file for details.
+This project is licensed under the terms specified in the **GNU GPL v3** Licence. See the [LICENSE](https://github.com/noahrav/soundref/blob/master/LICENSE) file for details.
