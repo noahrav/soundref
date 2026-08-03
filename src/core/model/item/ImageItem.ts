@@ -1,5 +1,5 @@
-import { Position } from '@core/model/Position';
 import { BoardItem } from '@core/model/item/BoardItem';
+import { Position } from '@core/model/Position';
 
 /**
  * Domain model representing a standalone image element placed on the canvas board.

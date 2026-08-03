@@ -64,6 +64,17 @@ function extractNoteContent(props: any): string {
 	return props.text || '';
 }
 
+function sendShapeToBackAboveSections(editor: Editor, shapeId: TLShapeId) {
+	editor.sendToBack([shapeId]);
+	const sectionIds = editor
+		.getCurrentPageShapes()
+		.filter((s) => s.type === 'section')
+		.map((s) => s.id);
+	if (sectionIds.length > 0) {
+		editor.sendToBack(sectionIds);
+	}
+}
+
 /**
  * Main Board component rendering the tldraw canvas instance, toolbar, tabs, mini player,
  * and track edit modal. Manages auto-sync of shapes and camera to persistent storage.
@@ -680,7 +691,9 @@ export default function Board({
 									.filter((s) => s.type === 'section')
 									.map((s) => s.id);
 								if (sectionIds.length > 0) {
-									const firstNonSection = pageShapes.findIndex((s) => s.type !== 'section');
+									const firstNonSection = pageShapes.findIndex(
+										(s) => s.type !== 'section',
+									);
 									let lastSection = -1;
 									for (let i = pageShapes.length - 1; i >= 0; i--) {
 										if (pageShapes[i].type === 'section') {
@@ -1043,20 +1056,6 @@ export default function Board({
 		window.addEventListener('keydown', handleKeyDown, true);
 		return () => window.removeEventListener('keydown', handleKeyDown, true);
 	}, [service]);
-
-	const sendShapeToBackAboveSections = (
-		editor: Editor,
-		shapeId: TLShapeId,
-	) => {
-		editor.sendToBack([shapeId]);
-		const sectionIds = editor
-			.getCurrentPageShapes()
-			.filter((s) => s.type === 'section')
-			.map((s) => s.id);
-		if (sectionIds.length > 0) {
-			editor.sendToBack(sectionIds);
-		}
-	};
 
 	useEffect(() => {
 		const handleGlobalPaste = async (e: ClipboardEvent) => {

@@ -426,7 +426,11 @@ export class ProjectService {
 					p.scale || 1,
 					p.width || 200,
 				);
-			} else if (p.type === 'ImageItem' || p.type === 'image_item' || p.type === 'image') {
+			} else if (
+				p.type === 'ImageItem' ||
+				p.type === 'image_item' ||
+				p.type === 'image'
+			) {
 				item = new ImageItem(
 					pos,
 					p.imageUrl || '',

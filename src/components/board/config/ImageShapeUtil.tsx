@@ -1,6 +1,6 @@
+import { ImageCardComponent } from '@components/board/config/ImageCardComponent';
 import type { TLResizeInfo, TLShape } from 'tldraw';
 import { BaseBoxShapeUtil, Rectangle2d } from 'tldraw';
-import { ImageCardComponent } from '@components/board/config/ImageCardComponent';
 
 declare module 'tldraw' {
 	export interface TLGlobalShapePropsMap {

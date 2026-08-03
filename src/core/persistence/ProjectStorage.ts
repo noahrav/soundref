@@ -199,17 +199,31 @@ export class ProjectStorage {
 					}
 					if (item instanceof TrackItem || (item as any).type === 'TrackItem') {
 						const trackItem = item as TrackItem;
-						const projectDir = project.path ? project.path.trim().replace(/[/\\]+$/, '') : '';
-						
+						const projectDir = project.path
+							? project.path.trim().replace(/[/\\]+$/, '')
+							: '';
+
 						let audioSource = trackItem.audioSource || '';
 						let imageUrl = trackItem.imageUrl || '';
 
 						if (projectDir) {
-							if (audioSource.startsWith(`${projectDir}/assets/`) || audioSource.startsWith(`${projectDir}\\assets\\`)) {
-								audioSource = audioSource.slice(projectDir.length).replace(/^[/\\]+/, '').replace(/\\/g, '/');
+							if (
+								audioSource.startsWith(`${projectDir}/assets/`) ||
+								audioSource.startsWith(`${projectDir}\\assets\\`)
+							) {
+								audioSource = audioSource
+									.slice(projectDir.length)
+									.replace(/^[/\\]+/, '')
+									.replace(/\\/g, '/');
 							}
-							if (imageUrl.startsWith(`${projectDir}/assets/`) || imageUrl.startsWith(`${projectDir}\\assets\\`)) {
-								imageUrl = imageUrl.slice(projectDir.length).replace(/^[/\\]+/, '').replace(/\\/g, '/');
+							if (
+								imageUrl.startsWith(`${projectDir}/assets/`) ||
+								imageUrl.startsWith(`${projectDir}\\assets\\`)
+							) {
+								imageUrl = imageUrl
+									.slice(projectDir.length)
+									.replace(/^[/\\]+/, '')
+									.replace(/\\/g, '/');
 							}
 						}
 
@@ -233,11 +247,20 @@ export class ProjectStorage {
 						(item as any).type === 'image'
 					) {
 						const imageItem = item as ImageItem;
-						const projectDir = project.path ? project.path.trim().replace(/[/\\]+$/, '') : '';
+						const projectDir = project.path
+							? project.path.trim().replace(/[/\\]+$/, '')
+							: '';
 						let imageUrl = imageItem.imageUrl || '';
 
-						if (projectDir && (imageUrl.startsWith(`${projectDir}/assets/`) || imageUrl.startsWith(`${projectDir}\\assets\\`))) {
-							imageUrl = imageUrl.slice(projectDir.length).replace(/^[/\\]+/, '').replace(/\\/g, '/');
+						if (
+							projectDir &&
+							(imageUrl.startsWith(`${projectDir}/assets/`) ||
+								imageUrl.startsWith(`${projectDir}\\assets\\`))
+						) {
+							imageUrl = imageUrl
+								.slice(projectDir.length)
+								.replace(/^[/\\]+/, '')
+								.replace(/\\/g, '/');
 						}
 
 						return {
@@ -250,7 +273,10 @@ export class ProjectStorage {
 							height: imageItem.height || 300,
 						};
 					}
-					if (item instanceof SectionItem || (item as any).type === 'SectionItem') {
+					if (
+						item instanceof SectionItem ||
+						(item as any).type === 'SectionItem'
+					) {
 						const sectionItem = item as SectionItem;
 						return {
 							id: sectionItem.id,
@@ -275,7 +301,8 @@ export class ProjectStorage {
 						color: sticky.color || 'yellow',
 					};
 				}),
-			}));
+			}),
+		);
 
 		return {
 			id: project.id,
@@ -317,7 +344,10 @@ export class ProjectStorage {
 								itemJson.scale || 1,
 								itemJson.width,
 							);
-						} else if (itemJson.type === 'TrackItem' || itemJson.type === 'track') {
+						} else if (
+							itemJson.type === 'TrackItem' ||
+							itemJson.type === 'track'
+						) {
 							item = new TrackItem(
 								pos,
 								itemJson.title || 'Track',
@@ -343,7 +373,10 @@ export class ProjectStorage {
 								itemJson.width || 300,
 								itemJson.height || 300,
 							);
-						} else if (itemJson.type === 'SectionItem' || itemJson.type === 'section') {
+						} else if (
+							itemJson.type === 'SectionItem' ||
+							itemJson.type === 'section'
+						) {
 							item = new SectionItem(
 								pos,
 								itemJson.title || 'Section',

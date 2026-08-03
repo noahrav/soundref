@@ -8,8 +8,6 @@ import { getSectionBoundsForSelection } from '@components/board/utils/sectionUti
 import { DesktopBridge } from '@core/persistence/DesktopBridge';
 import { getImageDimensions } from '@core/utils/mediaUtils';
 import { formatShortcut } from '@core/utils/shortcutUtils';
-import { ProjectService } from '@services/ProjectService';
-import { SettingsService } from '@services/SettingsService';
 import type { IconDefinition } from '@fortawesome/free-solid-svg-icons';
 import {
 	faAngleDoubleDown,
@@ -24,6 +22,8 @@ import {
 	faNoteSticky,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { ProjectService } from '@services/ProjectService';
+import { SettingsService } from '@services/SettingsService';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TLUiContextMenuProps } from 'tldraw';
@@ -607,16 +607,22 @@ export const CustomContextMenu = track(function CustomContextMenu({
 											if (DesktopBridge.isTauri()) {
 												const picked = await DesktopBridge.pickImageFile();
 												if (picked) {
-													const mode = SettingsService.instance().getAudioStorageMode();
-													const activeProj = ProjectService.instance().getActiveProject();
-													const fileName = picked.split(/[/\\]/).pop() || 'image.png';
+													const mode =
+														SettingsService.instance().getAudioStorageMode();
+													const activeProj =
+														ProjectService.instance().getActiveProject();
+													const fileName =
+														picked.split(/[/\\]/).pop() || 'image.png';
 													let finalUrl = picked;
 
 													if (mode === 'assets' && activeProj?.path) {
 														const assetsDir = `${activeProj.path.replace(/[/\\]+$/, '')}/assets`;
 														const targetPath = `${assetsDir}/${fileName}`;
 														await DesktopBridge.createDir(assetsDir);
-														const copied = await DesktopBridge.copyFile(picked, targetPath);
+														const copied = await DesktopBridge.copyFile(
+															picked,
+															targetPath,
+														);
 														if (copied) {
 															finalUrl = `assets/${fileName}`;
 														}
