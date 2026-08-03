@@ -1,7 +1,7 @@
 import { TrackItem } from '@core/model/item/TrackItem';
 import { DesktopBridge } from '@core/persistence/DesktopBridge';
 import { ProjectStorage } from '@core/persistence/ProjectStorage';
-import { faCog, faSync, faXmark } from '@fortawesome/free-solid-svg-icons';
+import { faCheck, faCog, faSync, faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { ProjectService } from '@services/ProjectService';
 import {
@@ -11,6 +11,15 @@ import {
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import '@components/board/components/SettingsModal.scss';
+import '/node_modules/flag-icons/css/flag-icons.min.css';
+
+/**
+ * Available languages with their display metadata.
+ */
+const LANGUAGES = [
+	{ code: 'fr', flag: 'fr', label: 'Français' },
+	{ code: 'en', flag: 'gb', label: 'English' },
+] as const;
 
 interface SettingsModalProps {
 	isOpen: boolean;
@@ -23,7 +32,7 @@ interface SettingsModalProps {
  * and allows converting existing project tracks to the selected mode.
  */
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-	const { t } = useTranslation();
+	const { t, i18n } = useTranslation();
 	const [audioStorageMode, setAudioStorageMode] = useState<AudioStorageMode>(
 		() => SettingsService.instance().getAudioStorageMode(),
 	);
@@ -131,6 +140,37 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 					</button>
 				</div>
 				<div className="settings-modal__content">
+					<div className="settings-modal__section">
+						<h3 className="settings-modal__section-title">
+							{t('board.changeLanguage')}
+						</h3>
+						<div className="settings-modal__language-list">
+							{LANGUAGES.map((lang) => {
+								const isActive = i18n.language === lang.code;
+								return (
+									<button
+										key={lang.code}
+										type="button"
+										className={`settings-modal__language-option${isActive ? ' settings-modal__language-option--active' : ''}`}
+										onClick={() => {
+											if (lang.code !== i18n.language) {
+												void i18n.changeLanguage(lang.code);
+											}
+										}}
+									>
+										<span className={`language-flag fi fi-${lang.flag}`}></span>
+										<span className="language-name">{lang.label}</span>
+										<span className="language-check">
+											<FontAwesomeIcon icon={faCheck} />
+										</span>
+									</button>
+								);
+							})}
+						</div>
+					</div>
+
+					<div className="settings-modal__divider" />
+
 					<div className="settings-modal__section">
 						<h3 className="settings-modal__section-title">
 							{t('settings.audioStorageTitle')}

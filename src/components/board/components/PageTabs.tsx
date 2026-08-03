@@ -16,8 +16,6 @@ interface PageTabsProps {
 	onBackToProjects?: () => void;
 	/** Callback function to open project creation modal */
 	onOpenCreateProjectModal?: () => void;
-	/** Callback function to open language change modal */
-	onOpenChangeLanguageModal?: () => void;
 	/** Callback function to open settings modal */
 	onOpenSettingsModal?: () => void;
 }
@@ -30,7 +28,6 @@ export const PageTabs = track(function PageTabs({
 	projectId,
 	onBackToProjects,
 	onOpenCreateProjectModal,
-	onOpenChangeLanguageModal,
 	onOpenSettingsModal,
 }: PageTabsProps) {
 	const { t } = useTranslation();
@@ -152,7 +149,6 @@ export const PageTabs = track(function PageTabs({
 						onClose={() => setIsMenuOpen(false)}
 						onBackToProjects={onBackToProjects}
 						onOpenCreateProjectModal={onOpenCreateProjectModal}
-						onOpenChangeLanguageModal={onOpenChangeLanguageModal}
 						onOpenSettingsModal={onOpenSettingsModal}
 					/>
 				)}

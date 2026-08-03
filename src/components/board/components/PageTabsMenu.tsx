@@ -4,7 +4,6 @@ import {
 	faCog,
 	faFolderOpen,
 	faFolderTree,
-	faLanguage,
 	faPlus,
 	faPowerOff,
 	faRotateLeft,
@@ -25,8 +24,6 @@ interface PageTabsMenuProps {
 	onBackToProjects?: () => void;
 	/** Callback function to open project creation modal */
 	onOpenCreateProjectModal?: () => void;
-	/** Callback function to open language change modal */
-	onOpenChangeLanguageModal?: () => void;
 	/** Callback function to open settings modal */
 	onOpenSettingsModal?: () => void;
 }
@@ -39,10 +36,9 @@ export function PageTabsMenu({
 	onClose,
 	onBackToProjects,
 	onOpenCreateProjectModal,
-	onOpenChangeLanguageModal,
 	onOpenSettingsModal,
 }: PageTabsMenuProps) {
-	const { t, i18n } = useTranslation();
+	const { t } = useTranslation();
 	const service = ProjectService.instance();
 
 	/**
@@ -125,23 +121,6 @@ export function PageTabsMenu({
 			</button>
 
 			<div className="page-tabs__menu-divider" />
-
-			<button
-				type="button"
-				className="page-tabs__menu-item"
-				onClick={() => {
-					onClose();
-					onOpenChangeLanguageModal?.();
-				}}
-			>
-				<span className="item-label">
-					<FontAwesomeIcon icon={faLanguage} />
-					<span>{t('board.changeLanguage')}</span>
-				</span>
-				<span className="item-language">
-					{i18n.language.toLocaleUpperCase()}
-				</span>
-			</button>
 
 			<button
 				type="button"

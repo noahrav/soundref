@@ -131,6 +131,8 @@
 		"referenceDesc": "Only the file path is saved.",
 		"convertBtn": "Convert existing files to selected mode",
 		"converting": "Converting files...",
-		"convertSuccess": "Successfully converted {{count}} file(s)!"
+		"convertSuccess_zero": "All files have already been converted.",
+		"convertSuccess_one": "Successfully converted {{count}} file!",
+		"convertSuccess_other": "Successfully converted {{count}} files!"
 	}
 }

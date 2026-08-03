@@ -131,6 +131,8 @@
 		"referenceDesc": "Seul le chemin du fichier est enregistré.",
 		"convertBtn": "Convertir les fichiers du projet vers ce mode",
 		"converting": "Conversion en cours...",
-		"convertSuccess": "{{count}} fichier(s) converti(s) avec succès !"
+		"convertSuccess_zero": "Tous les fichiers ont déjà été convertis.",
+		"convertSuccess_one": "{{count}} fichier converti avec succès !",
+		"convertSuccess_other": "{{count}} fichiers convertis avec succès !"
 	}
 }

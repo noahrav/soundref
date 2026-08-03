@@ -16,7 +16,6 @@ import { clearBlobUrlCache } from '@core/utils/mediaUtils';
 import { ProjectService } from '@services/ProjectService';
 import '@components/board/board.scss';
 import { BoardToolbar } from '@components/board/components/BoardToolbar';
-import { ChangeLanguageModal } from '@components/board/components/ChangeLanguageModal';
 import { CustomContextMenu } from '@components/board/components/ContextMenu';
 import { MiniPlayer } from '@components/board/components/MiniPlayer';
 import { PageTabs } from '@components/board/components/PageTabs';
@@ -79,8 +78,6 @@ export default function Board({
 	const editorRef = useRef<Editor | null>(null);
 
 	const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] =
-		useState(false);
-	const [isChangeLanguageModalOpen, setIsChangeLanguageModalOpen] =
 		useState(false);
 	const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 	const [isTrackModalOpen, setIsTrackModalOpen] = useState(false);
@@ -1094,7 +1091,6 @@ export default function Board({
 					projectId={activeProjectId}
 					onBackToProjects={onBackToProjects}
 					onOpenCreateProjectModal={() => setIsCreateProjectModalOpen(true)}
-					onOpenChangeLanguageModal={() => setIsChangeLanguageModalOpen(true)}
 					onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
 				/>
 				<MiniPlayer />
@@ -1115,11 +1111,6 @@ export default function Board({
 					setActiveProjectId(project.id);
 					onSelectProject?.(project.id);
 				}}
-			/>
-
-			<ChangeLanguageModal
-				isOpen={isChangeLanguageModalOpen}
-				onClose={() => setIsChangeLanguageModalOpen(false)}
 			/>
 
 			<SettingsModal
