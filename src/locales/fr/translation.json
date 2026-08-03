@@ -39,6 +39,7 @@
 		"defaultWorkspaceName": "Tableau {{number}}",
 		"backToProjects": "Projets",
 		"backToProjectsTitle": "Menu projet",
+		"changeLanguage": "Langue",
 		"chooseOtherProject": "Choisir un autre projet",
 		"createNewProject": "Créer un nouveau projet",
 		"undo": "Annuler",

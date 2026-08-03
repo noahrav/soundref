@@ -1,11 +1,6 @@
 import {
 	faBars,
-	faFolderOpen,
-	faFolderTree,
 	faPlus,
-	faPowerOff,
-	faRotateLeft,
-	faRotateRight,
 	faXmark,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -13,8 +8,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PageRecordType, type TLPageId, track, useEditor } from 'tldraw';
 import { ProjectService } from '@services/ProjectService';
-import { DesktopBridge } from '@core/persistence/DesktopBridge';
-import { formatShortcut } from '@core/utils/shortcutUtils';
+import { PageTabsMenu } from './PageTabsMenu';
 
 /**
  * Props for PageTabs component.
@@ -26,6 +20,8 @@ interface PageTabsProps {
 	onBackToProjects?: () => void;
 	/** Callback function to open project creation modal */
 	onOpenCreateProjectModal?: () => void;
+	/** Callback function to open language change modal */
+	onOpenChangeLanguageModal?: () => void;
 }
 
 /**
@@ -36,6 +32,7 @@ export const PageTabs = track(function PageTabs({
 	projectId,
 	onBackToProjects,
 	onOpenCreateProjectModal,
+	onOpenChangeLanguageModal,
 }: PageTabsProps) {
 	const { t } = useTranslation();
 	const editor = useEditor();
@@ -61,22 +58,6 @@ export const PageTabs = track(function PageTabs({
 		return () => window.removeEventListener('mousedown', handleClickOutside);
 	}, [isMenuOpen]);
 
-	/**
-	 * Opens current project folder on disk in file explorer.
-	 */
-	const handleOpenProjectFolder = useCallback(() => {
-		const activeProject = service.getActiveProject();
-		if (activeProject?.path) {
-			void DesktopBridge.openFolder(activeProject.path);
-		}
-	}, [service]);
-
-	/**
-	 * Quits the desktop application window.
-	 */
-	const handleExitApp = useCallback(() => {
-		void DesktopBridge.exitApp();
-	}, []);
 
 	/**
 	 * Adds a new workspace page tab to the tldraw editor and project service.
@@ -169,99 +150,12 @@ export const PageTabs = track(function PageTabs({
 				</button>
 
 				{isMenuOpen && (
-					<div className="page-tabs__menu-dropdown">
-						<button
-							type="button"
-							className="page-tabs__menu-item"
-							onClick={() => {
-								setIsMenuOpen(false);
-								onBackToProjects?.();
-							}}
-						>
-							<span className="item-label">
-								<FontAwesomeIcon icon={faFolderOpen} />
-								<span>{t('board.chooseOtherProject')}</span>
-							</span>
-						</button>
-
-						<button
-							type="button"
-							className="page-tabs__menu-item"
-							onClick={() => {
-								setIsMenuOpen(false);
-								onOpenCreateProjectModal?.();
-							}}
-						>
-							<span className="item-label">
-								<FontAwesomeIcon icon={faPlus} />
-								<span>{t('board.createNewProject')}</span>
-							</span>
-						</button>
-
-						<div className="page-tabs__menu-divider" />
-
-						<button
-							type="button"
-							className="page-tabs__menu-item"
-							onClick={() => {
-								setIsMenuOpen(false);
-								void service.undo();
-							}}
-						>
-							<span className="item-label">
-								<FontAwesomeIcon icon={faRotateLeft} />
-								<span>{t('board.undo')}</span>
-							</span>
-							<span className="item-shortcut">{formatShortcut('Ctrl+Z')}</span>
-						</button>
-
-						<button
-							type="button"
-							className="page-tabs__menu-item"
-							onClick={() => {
-								setIsMenuOpen(false);
-								void service.redo();
-							}}
-						>
-							<span className="item-label">
-								<FontAwesomeIcon icon={faRotateRight} />
-								<span>{t('board.redo')}</span>
-							</span>
-							<span className="item-shortcut">{formatShortcut('Ctrl+Y')}</span>
-						</button>
-
-						<div className="page-tabs__menu-divider" />
-
-						<button
-							type="button"
-							className="page-tabs__menu-item"
-							onClick={() => {
-								setIsMenuOpen(false);
-								handleOpenProjectFolder();
-							}}
-						>
-							<span className="item-label">
-								<FontAwesomeIcon icon={faFolderTree} />
-								<span>{t('board.openProjectFolder')}</span>
-							</span>
-						</button>
-
-						<div className="page-tabs__menu-divider" />
-
-						<button
-							type="button"
-							className="page-tabs__menu-item page-tabs__menu-item--danger"
-							onClick={() => {
-								setIsMenuOpen(false);
-								handleExitApp();
-							}}
-						>
-							<span className="item-label">
-								<FontAwesomeIcon icon={faPowerOff} />
-								<span>{t('board.quitApp')}</span>
-							</span>
-						</button>
-					</div>
+					<PageTabsMenu
+						onClose={() => setIsMenuOpen(false)}
+						onBackToProjects={onBackToProjects}
+						onOpenCreateProjectModal={onOpenCreateProjectModal}
+						onOpenChangeLanguageModal={onOpenChangeLanguageModal}
+					/>
 				)}
 			</div>
 

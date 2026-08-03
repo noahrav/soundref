@@ -39,6 +39,7 @@
 		"defaultWorkspaceName": "Board {{number}}",
 		"backToProjects": "Projects",
 		"backToProjectsTitle": "Project menu",
+		"changeLanguage": "Language",
 		"chooseOtherProject": "Choose another project",
 		"createNewProject": "Create new project",
 		"undo": "Undo",
