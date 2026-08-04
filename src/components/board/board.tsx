@@ -1091,7 +1091,12 @@ export default function Board({
 						reader.onload = async (evt) => {
 							if (evt.target?.result) {
 								const src = evt.target.result as string;
-								const compressed = await compressImageToDataUrl(src, 1920, 1920, 0.85);
+								const compressed = await compressImageToDataUrl(
+									src,
+									1920,
+									1920,
+									0.85,
+								);
 								const dims = await getImageDimensions(compressed);
 								const newId = createShapeId();
 								editor.createShape({
@@ -1117,7 +1122,12 @@ export default function Board({
 
 				let processUrl = finalUrl;
 				if (processUrl.startsWith('data:image/')) {
-					processUrl = await compressImageToDataUrl(processUrl, 1920, 1920, 0.85);
+					processUrl = await compressImageToDataUrl(
+						processUrl,
+						1920,
+						1920,
+						0.85,
+					);
 				}
 				const dims = await getImageDimensions(processUrl);
 				const newId = createShapeId();
@@ -1238,7 +1248,12 @@ export default function Board({
 					reader.onload = async (event) => {
 						if (event.target?.result) {
 							const src = event.target.result as string;
-							const compressed = await compressImageToDataUrl(src, 1920, 1920, 0.85);
+							const compressed = await compressImageToDataUrl(
+								src,
+								1920,
+								1920,
+								0.85,
+							);
 							const dims = await getImageDimensions(compressed);
 							const newId = createShapeId();
 							editor.createShape({

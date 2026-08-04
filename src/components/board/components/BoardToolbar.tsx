@@ -317,7 +317,12 @@ export const BoardToolbar = track(function BoardToolbar({
 											reader.onload = async (evt) => {
 												if (evt.target?.result) {
 													const src = evt.target.result as string;
-													const compressed = await compressImageToDataUrl(src, 1920, 1920, 0.85);
+													const compressed = await compressImageToDataUrl(
+														src,
+														1920,
+														1920,
+														0.85,
+													);
 													const dims = await getImageDimensions(compressed);
 													const newId = createShapeId();
 													editor.createShape({

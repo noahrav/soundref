@@ -209,3 +209,88 @@ pub fn run() {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+    use zip::ZipArchive;
+
+    #[test]
+    fn test_write_and_read_text_file() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("sub/dir/test.txt");
+        let path_str = file_path.to_string_lossy().to_string();
+
+        let write_res = write_text_file(path_str.clone(), "Hello SoundRef".to_string());
+        assert!(write_res.is_ok());
+
+        assert!(file_exists(path_str.clone()));
+
+        let read_res = read_text_file(path_str);
+        assert_eq!(read_res.unwrap(), "Hello SoundRef");
+    }
+
+    #[test]
+    fn test_copy_file() {
+        let dir = tempdir().unwrap();
+        let src = dir.path().join("src.txt");
+        let dst = dir.path().join("nested/dst.txt");
+
+        fs::write(&src, "Content to copy").unwrap();
+        let copy_res = copy_file(
+            src.to_string_lossy().to_string(),
+            dst.to_string_lossy().to_string(),
+        );
+        assert!(copy_res.is_ok());
+
+        assert!(dst.exists());
+        let content = fs::read_to_string(dst).unwrap();
+        assert_eq!(content, "Content to copy");
+    }
+
+    #[test]
+    fn test_create_zip_archive_impl() {
+        let src_dir = tempdir().unwrap();
+        let project_folder = src_dir.path();
+
+        let file1 = project_folder.join("soundref.json");
+        fs::write(&file1, r#"{"name": "Test"}"#).unwrap();
+
+        let assets_dir = project_folder.join("assets");
+        fs::create_dir_all(&assets_dir).unwrap();
+        let file2 = assets_dir.join("track.mp3");
+        fs::write(&file2, vec![0u8, 1u8, 2u8, 3u8]).unwrap();
+
+        let zip_dir = tempdir().unwrap();
+        let zip_path = zip_dir.path().join("export.zip");
+
+        let res = create_zip_archive_impl(project_folder.to_str().unwrap(), &zip_path);
+        assert!(res.is_ok());
+        assert!(zip_path.exists());
+
+        let zip_file = File::open(&zip_path).unwrap();
+        let mut archive = ZipArchive::new(zip_file).unwrap();
+
+        assert!(archive.len() >= 2);
+        let names: Vec<String> = (0..archive.len())
+            .map(|i| archive.by_index(i).unwrap().name().to_string())
+            .collect();
+
+        assert!(names.contains(&"soundref.json".to_string()));
+        assert!(names.iter().any(|n| n.contains("track.mp3")));
+    }
+
+    #[test]
+    fn test_create_zip_archive_non_existent_source() {
+        let zip_dir = tempdir().unwrap();
+        let zip_path = zip_dir.path().join("export.zip");
+
+        let res = create_zip_archive_impl("/path/that/does/not/exist/12345", &zip_path);
+        assert!(res.is_err());
+        assert_eq!(
+            res.unwrap_err(),
+            "Source directory does not exist or is not a directory"
+        );
+    }
+}

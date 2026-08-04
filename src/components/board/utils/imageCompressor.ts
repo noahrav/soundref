@@ -29,7 +29,12 @@ export function compressImageToDataUrl(
 		img.crossOrigin = 'anonymous';
 		img.onload = () => {
 			let { width, height } = img;
-			if (width <= maxWidth && height <= maxHeight && typeof fileOrUrl === 'string' && fileOrUrl.length < 500000) {
+			if (
+				width <= maxWidth &&
+				height <= maxHeight &&
+				typeof fileOrUrl === 'string' &&
+				fileOrUrl.length < 500000
+			) {
 				resolve(fileOrUrl);
 				return;
 			}

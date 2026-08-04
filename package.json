@@ -11,7 +11,10 @@
 		"build": "tsc && vite build",
 		"preview": "vite preview",
 		"tauri": "tauri",
-		"format": "pnpx @biomejs/biome check --write"
+		"format": "pnpx @biomejs/biome check --write",
+		"test": "vitest",
+		"test:run": "vitest run",
+		"test:coverage": "vitest run --coverage"
 	},
 	"dependencies": {
 		"@fortawesome/fontawesome-svg-core": "^7.3.1",
@@ -29,12 +32,17 @@
 	"devDependencies": {
 		"@biomejs/biome": "2.5.5",
 		"@tauri-apps/cli": "^2",
+		"@testing-library/jest-dom": "^7.0.0",
+		"@testing-library/react": "^16.3.2",
+		"@testing-library/user-event": "^14.6.1",
 		"@types/node": "^26.1.2",
 		"@types/react": "^19.1.8",
 		"@types/react-dom": "^19.1.6",
 		"@vitejs/plugin-react": "^4.6.0",
+		"jsdom": "^30.0.1",
 		"sass-embedded": "^1.100.0",
 		"typescript": "~5.8.3",
-		"vite": "^7.0.4"
+		"vite": "^7.0.4",
+		"vitest": "^4.1.10"
 	}
 }
