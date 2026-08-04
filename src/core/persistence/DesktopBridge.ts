@@ -248,6 +248,31 @@ export class DesktopBridge {
 	}
 
 	/**
+	 * Prompts user for destination path and creates a zip archive of specified project directory.
+	 * @param projectPath Directory path of project to archive.
+	 * @param defaultName Default file name suggested for zip archive.
+	 * @returns Promise resolving to destination zip path string or null if cancelled/failed.
+	 */
+	public static async exportProjectZip(
+		projectPath: string,
+		defaultName: string,
+	): Promise<string | null> {
+		if (DesktopBridge.isTauri()) {
+			try {
+				const savedPath = await invoke<string | null>('export_project_zip', {
+					projectPath,
+					defaultName,
+				});
+				return savedPath;
+			} catch (err) {
+				console.error('[DesktopBridge] export_project_zip error:', err);
+				return null;
+			}
+		}
+		return null;
+	}
+
+	/**
 	 * Quits the desktop application window.
 	 */
 	public static async exitApp(): Promise<void> {

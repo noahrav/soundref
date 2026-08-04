@@ -1,10 +1,9 @@
 import { ColorPicker } from '@components/board/components/ColorPicker';
+import { compressImageToDataUrl } from '@components/board/utils/imageCompressor';
 import { toRichText } from '@components/board/utils/richText';
 import { getSectionBoundsForSelection } from '@components/board/utils/sectionUtils';
 import { DesktopBridge } from '@core/persistence/DesktopBridge';
 import { getImageDimensions } from '@core/utils/mediaUtils';
-import { ProjectService } from '@services/ProjectService';
-import { SettingsService } from '@services/SettingsService';
 import {
 	faArrowPointer,
 	faChevronDown,
@@ -17,6 +16,8 @@ import {
 	faPlus,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { ProjectService } from '@services/ProjectService';
+import { SettingsService } from '@services/SettingsService';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -261,8 +262,10 @@ export const BoardToolbar = track(function BoardToolbar({
 								if (DesktopBridge.isTauri()) {
 									const picked = await DesktopBridge.pickImageFile();
 									if (picked) {
-										const mode = SettingsService.instance().getAudioStorageMode();
-										const activeProj = ProjectService.instance().getActiveProject();
+										const mode =
+											SettingsService.instance().getAudioStorageMode();
+										const activeProj =
+											ProjectService.instance().getActiveProject();
 										const fileName = picked.split(/[/\\]/).pop() || 'image.png';
 										let finalUrl = picked;
 
@@ -270,7 +273,10 @@ export const BoardToolbar = track(function BoardToolbar({
 											const assetsDir = `${activeProj.path.replace(/[/\\]+$/, '')}/assets`;
 											const targetPath = `${assetsDir}/${fileName}`;
 											await DesktopBridge.createDir(assetsDir);
-											const copied = await DesktopBridge.copyFile(picked, targetPath);
+											const copied = await DesktopBridge.copyFile(
+												picked,
+												targetPath,
+											);
 											if (copied) {
 												finalUrl = `assets/${fileName}`;
 											}
@@ -311,7 +317,13 @@ export const BoardToolbar = track(function BoardToolbar({
 											reader.onload = async (evt) => {
 												if (evt.target?.result) {
 													const src = evt.target.result as string;
-													const dims = await getImageDimensions(src);
+													const compressed = await compressImageToDataUrl(
+														src,
+														1920,
+														1920,
+														0.85,
+													);
+													const dims = await getImageDimensions(compressed);
 													const newId = createShapeId();
 													editor.createShape({
 														id: newId,
@@ -319,7 +331,7 @@ export const BoardToolbar = track(function BoardToolbar({
 														x: point.x - dims.w / 2,
 														y: point.y - dims.h / 2,
 														props: {
-															imageUrl: src,
+															imageUrl: compressed,
 															scale: 1,
 															w: dims.w,
 															h: dims.h,

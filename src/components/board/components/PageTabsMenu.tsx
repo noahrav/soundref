@@ -2,6 +2,7 @@ import { DesktopBridge } from '@core/persistence/DesktopBridge';
 import { formatShortcut } from '@core/utils/shortcutUtils';
 import {
 	faCog,
+	faFileExport,
 	faFolderOpen,
 	faFolderTree,
 	faPlus,
@@ -48,6 +49,25 @@ export function PageTabsMenu({
 		const activeProject = service.getActiveProject();
 		if (activeProject?.path) {
 			void DesktopBridge.openFolder(activeProject.path);
+		}
+	}, [service]);
+
+	/**
+	 * Prompts user for export destination and archives current project directory into a .zip file,
+	 * then opens the file explorer at the exported location.
+	 */
+	const handleExportProject = useCallback(async () => {
+		const activeProject = service.getActiveProject();
+		if (!activeProject?.path) return;
+
+		const defaultName = activeProject.name || 'project';
+		const exportedPath = await DesktopBridge.exportProjectZip(
+			activeProject.path,
+			defaultName,
+		);
+
+		if (exportedPath) {
+			void DesktopBridge.openFolder(exportedPath);
 		}
 	}, [service]);
 
@@ -149,6 +169,20 @@ export function PageTabsMenu({
 				<span className="item-label">
 					<FontAwesomeIcon icon={faFolderTree} />
 					<span>{t('board.openProjectFolder')}</span>
+				</span>
+			</button>
+
+			<button
+				type="button"
+				className="page-tabs__menu-item"
+				onClick={() => {
+					onClose();
+					void handleExportProject();
+				}}
+			>
+				<span className="item-label">
+					<FontAwesomeIcon icon={faFileExport} />
+					<span>{t('board.exportProject')}</span>
 				</span>
 			</button>
 

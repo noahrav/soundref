@@ -1,6 +1,6 @@
+import { ImageCardComponent } from '@components/board/config/ImageCardComponent';
 import type { TLResizeInfo, TLShape } from 'tldraw';
 import { BaseBoxShapeUtil, Rectangle2d } from 'tldraw';
-import { ImageCardComponent } from '@components/board/config/ImageCardComponent';
 
 declare module 'tldraw' {
 	export interface TLGlobalShapePropsMap {
@@ -109,16 +109,35 @@ export class ImageShapeUtil extends BaseBoxShapeUtil<TLImageShape> {
 
 	/**
 	 * Handles shape resize interaction, scaling proportionally to preserve aspect ratio.
+	 * Clamps width and height between 30px and 4096px safety limits to prevent CPU/RAM crashes.
 	 */
 	override onResize(_shape: TLImageShape, info: TLResizeInfo<TLImageShape>) {
-		const initialW = Math.max(30, info.initialShape.props.w || 300);
-		const initialH = Math.max(30, info.initialShape.props.h || 300);
-		const aspect = initialW / initialH;
+		const MAX_IMAGE_SIZE = 4096;
+		const MIN_IMAGE_SIZE = 30;
+
+		const initialW = Math.max(MIN_IMAGE_SIZE, info.initialShape.props.w || 300);
+		const initialH = Math.max(MIN_IMAGE_SIZE, info.initialShape.props.h || 300);
+		let aspect = initialW / initialH;
+		if (!Number.isFinite(aspect) || aspect <= 0) {
+			aspect = 1;
+		}
 
 		const scale =
 			Math.abs(info.scaleX) > Math.abs(info.scaleY) ? info.scaleX : info.scaleY;
-		const newW = Math.max(30, Math.round(initialW * scale));
-		const newH = Math.max(30, Math.round(newW / aspect));
+		let newW = Math.round(initialW * scale);
+		let newH = Math.round(newW / aspect);
+
+		if (newW > MAX_IMAGE_SIZE) {
+			newW = MAX_IMAGE_SIZE;
+			newH = Math.round(newW / aspect);
+		}
+		if (newH > MAX_IMAGE_SIZE) {
+			newH = MAX_IMAGE_SIZE;
+			newW = Math.round(newH * aspect);
+		}
+
+		newW = Math.max(MIN_IMAGE_SIZE, Math.min(MAX_IMAGE_SIZE, newW));
+		newH = Math.max(MIN_IMAGE_SIZE, Math.min(MAX_IMAGE_SIZE, newH));
 
 		return {
 			props: {

@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import path from 'node:path';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
@@ -14,6 +15,12 @@ export default defineConfig(async () => ({
 			'@locales': path.resolve(__dirname, './src/locales'),
 			'@services': path.resolve(__dirname, './src/services'),
 		},
+	},
+	test: {
+		globals: true,
+		environment: 'node',
+		setupFiles: './src/tests/setup.ts',
+		include: ['src/**/*.{test,spec}.{ts,tsx}'],
 	},
 
 	// Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`

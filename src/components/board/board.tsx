@@ -34,6 +34,7 @@ import {
 	fetchCoverArt,
 	parseStreamUrl,
 } from '@components/board/utils/embedUtils';
+import { compressImageToDataUrl } from '@components/board/utils/imageCompressor';
 import { fromRichText, toRichText } from '@components/board/utils/richText';
 import { CreateProjectModal } from '@components/project/CreateProjectModal';
 
@@ -62,6 +63,17 @@ function extractNoteContent(props: any): string {
 		if (rich) return rich;
 	}
 	return props.text || '';
+}
+
+function sendShapeToBackAboveSections(editor: Editor, shapeId: TLShapeId) {
+	editor.sendToBack([shapeId]);
+	const sectionIds = editor
+		.getCurrentPageShapes()
+		.filter((s) => s.type === 'section')
+		.map((s) => s.id);
+	if (sectionIds.length > 0) {
+		editor.sendToBack(sectionIds);
+	}
 }
 
 /**
@@ -675,23 +687,6 @@ export default function Board({
 								}
 							}
 							if (hasShapeChanges) {
-								const pageShapes = editor.getCurrentPageShapes();
-								const sectionIds = pageShapes
-									.filter((s) => s.type === 'section')
-									.map((s) => s.id);
-								if (sectionIds.length > 0) {
-									const firstNonSection = pageShapes.findIndex((s) => s.type !== 'section');
-									let lastSection = -1;
-									for (let i = pageShapes.length - 1; i >= 0; i--) {
-										if (pageShapes[i].type === 'section') {
-											lastSection = i;
-											break;
-										}
-									}
-									if (firstNonSection !== -1 && lastSection > firstNonSection) {
-										editor.sendToBack(sectionIds);
-									}
-								}
 								syncCurrentPageItemsToDisk();
 							}
 						});
@@ -1044,20 +1039,6 @@ export default function Board({
 		return () => window.removeEventListener('keydown', handleKeyDown, true);
 	}, [service]);
 
-	const sendShapeToBackAboveSections = (
-		editor: Editor,
-		shapeId: TLShapeId,
-	) => {
-		editor.sendToBack([shapeId]);
-		const sectionIds = editor
-			.getCurrentPageShapes()
-			.filter((s) => s.type === 'section')
-			.map((s) => s.id);
-		if (sectionIds.length > 0) {
-			editor.sendToBack(sectionIds);
-		}
-	};
-
 	useEffect(() => {
 		const handleGlobalPaste = async (e: ClipboardEvent) => {
 			const target = e.target as HTMLElement;
@@ -1110,7 +1091,13 @@ export default function Board({
 						reader.onload = async (evt) => {
 							if (evt.target?.result) {
 								const src = evt.target.result as string;
-								const dims = await getImageDimensions(src);
+								const compressed = await compressImageToDataUrl(
+									src,
+									1920,
+									1920,
+									0.85,
+								);
+								const dims = await getImageDimensions(compressed);
 								const newId = createShapeId();
 								editor.createShape({
 									id: newId,
@@ -1118,7 +1105,7 @@ export default function Board({
 									x: point.x - dims.w / 2,
 									y: point.y - dims.h / 2,
 									props: {
-										imageUrl: src,
+										imageUrl: compressed,
 										scale: 1,
 										w: dims.w,
 										h: dims.h,
@@ -1133,14 +1120,23 @@ export default function Board({
 					}
 				}
 
-				const dims = await getImageDimensions(finalUrl);
+				let processUrl = finalUrl;
+				if (processUrl.startsWith('data:image/')) {
+					processUrl = await compressImageToDataUrl(
+						processUrl,
+						1920,
+						1920,
+						0.85,
+					);
+				}
+				const dims = await getImageDimensions(processUrl);
 				const newId = createShapeId();
 				editor.createShape({
 					id: newId,
 					type: 'image_item',
 					x: point.x - dims.w / 2,
 					y: point.y - dims.h / 2,
-					props: { imageUrl: finalUrl, scale: 1, w: dims.w, h: dims.h },
+					props: { imageUrl: processUrl, scale: 1, w: dims.w, h: dims.h },
 				});
 				sendShapeToBackAboveSections(editor, newId);
 				editor.select(newId);
@@ -1252,7 +1248,13 @@ export default function Board({
 					reader.onload = async (event) => {
 						if (event.target?.result) {
 							const src = event.target.result as string;
-							const dims = await getImageDimensions(src);
+							const compressed = await compressImageToDataUrl(
+								src,
+								1920,
+								1920,
+								0.85,
+							);
+							const dims = await getImageDimensions(compressed);
 							const newId = createShapeId();
 							editor.createShape({
 								id: newId,
@@ -1260,7 +1262,7 @@ export default function Board({
 								x: point.x - dims.w / 2,
 								y: point.y - dims.h / 2,
 								props: {
-									imageUrl: src,
+									imageUrl: compressed,
 									scale: 1,
 									w: dims.w,
 									h: dims.h,

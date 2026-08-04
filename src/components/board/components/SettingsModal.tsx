@@ -2,7 +2,12 @@ import { ImageItem } from '@core/model/item/ImageItem';
 import { TrackItem } from '@core/model/item/TrackItem';
 import { DesktopBridge } from '@core/persistence/DesktopBridge';
 import { ProjectStorage } from '@core/persistence/ProjectStorage';
-import { faCheck, faCog, faSync, faXmark } from '@fortawesome/free-solid-svg-icons';
+import {
+	faCheck,
+	faCog,
+	faSync,
+	faXmark,
+} from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { ProjectService } from '@services/ProjectService';
 import {
@@ -68,7 +73,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 					const track = item as TrackItem;
 					let trackUpdated = false;
 
-					if (targetMode === 'assets' && DesktopBridge.isTauri() && projectDir) {
+					if (
+						targetMode === 'assets' &&
+						DesktopBridge.isTauri() &&
+						projectDir
+					) {
 						if (
 							track.sourceType === 'local' &&
 							track.audioSource &&
@@ -111,9 +120,16 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 					if (trackUpdated) {
 						count++;
 					}
-				} else if (item instanceof ImageItem || (item as any).type === 'ImageItem') {
+				} else if (
+					item instanceof ImageItem ||
+					(item as any).type === 'ImageItem'
+				) {
 					const img = item as ImageItem;
-					if (targetMode === 'assets' && DesktopBridge.isTauri() && projectDir) {
+					if (
+						targetMode === 'assets' &&
+						DesktopBridge.isTauri() &&
+						projectDir
+					) {
 						if (
 							img.imageUrl &&
 							!img.imageUrl.startsWith('http://') &&
