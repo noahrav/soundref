@@ -1,4 +1,13 @@
 version: 2
+
+multi-ecosystem-groups:
+  infrastructure:
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "08:00"
+      timezone: "Europe/Paris"
+
 updates:
   - package-ecosystem: "npm"
     directory: "/"
