@@ -1,13 +1,13 @@
 version: 2
 updates:
-  - package-ecosystem: "pnpm"
+  - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "friday"
       time: "08:00"
       timezone: "Europe/Paris"
-      
+
   - package-ecosystem: "cargo"
     directory: "/src-tauri/"
     schedule:
