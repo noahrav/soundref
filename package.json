@@ -14,6 +14,7 @@
 		"format": "pnpx @biomejs/biome check --write",
 		"test": "vitest",
 		"test:run": "vitest run",
+		"test:cargo": "cargo test --manifest-path src-tauri/Cargo.toml",
 		"test:coverage": "vitest run --coverage"
 	},
 	"dependencies": {
