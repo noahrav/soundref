@@ -3,8 +3,6 @@ name: CI and quality checks
 on:
   pull_request:
     branches: [master]
-  push:
-    branches: [master]
   workflow_dispatch:
 
 concurrency:
@@ -57,4 +55,4 @@ jobs:
         run: pnpm build
 
       - name: Run Rust backend unit tests
-        run: cargo test --manifest-path src-tauri/Cargo.toml
+        run: pnpm test:cargo

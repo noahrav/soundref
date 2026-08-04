@@ -101,6 +101,8 @@ src-tauri/target/release/bundle/
 
 * **`pnpm format`**: Format code using Biome.
 * **`pnpm preview`**: Preview the production web build locally.
+* **`pnpm test:run`**: Run frontend tests.
+* **`pnpm test:cargo`**: Run backend tests.
 
 ## License
 
