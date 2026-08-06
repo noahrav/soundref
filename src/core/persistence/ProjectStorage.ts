@@ -422,6 +422,7 @@ export class ProjectStorage {
 
 	/**
 	 * Saves full project data to desktop file system (soundref.json) and localStorage.
+	 * Also maintains a .bak copy of previous state for disaster recovery.
 	 * @param project Project instance to persist.
 	 */
 	public static async saveProjectData(project: Project): Promise<void> {
@@ -433,6 +434,12 @@ export class ProjectStorage {
 		if (DesktopBridge.isTauri() && project.path) {
 			await DesktopBridge.createDir(project.path);
 			const filePath = formatSoundrefJsonPath(project.path);
+			const bakPath = `${filePath}.bak`;
+
+			if (await DesktopBridge.fileExists(filePath)) {
+				await DesktopBridge.copyFile(filePath, bakPath);
+			}
+
 			const written = await DesktopBridge.writeTextFile(filePath, jsonStr);
 			if (written) {
 				console.log(`[ProjectStorage] Saved project data to ${filePath}`);
@@ -440,11 +447,16 @@ export class ProjectStorage {
 		}
 
 		const key = `soundref_data_${project.id}`;
+		const existingLocal = localStorage.getItem(key);
+		if (existingLocal) {
+			localStorage.setItem(`${key}_bak`, existingLocal);
+		}
 		localStorage.setItem(key, jsonStr);
 	}
 
 	/**
 	 * Loads full project data by reading desktop file system or localStorage.
+	 * Falls back to .bak backup files if primary data file is missing or corrupted.
 	 * @param projectId Project ID string.
 	 * @param projectPath Project folder path string.
 	 * @returns Promise resolving to loaded Project instance or null.
@@ -455,6 +467,8 @@ export class ProjectStorage {
 	): Promise<Project | null> {
 		if (DesktopBridge.isTauri() && projectPath) {
 			const filePath = formatSoundrefJsonPath(projectPath);
+			const bakPath = `${filePath}.bak`;
+
 			const content = await DesktopBridge.readTextFile(filePath);
 			if (content) {
 				try {
@@ -464,9 +478,27 @@ export class ProjectStorage {
 					console.error(`[ProjectStorage] Error parsing ${filePath}:`, err);
 				}
 			}
+
+			// Fallback to .bak file
+			const bakContent = await DesktopBridge.readTextFile(bakPath);
+			if (bakContent) {
+				try {
+					console.warn(
+						`[ProjectStorage] Recovered project from backup file ${bakPath}`,
+					);
+					const json = JSON.parse(bakContent);
+					return ProjectStorage.deserializeProject(json);
+				} catch (bakErr) {
+					console.error(
+						`[ProjectStorage] Error parsing backup file ${bakPath}:`,
+						bakErr,
+					);
+				}
+			}
 		}
 
-		const raw = localStorage.getItem(`soundref_data_${projectId}`);
+		const key = `soundref_data_${projectId}`;
+		const raw = localStorage.getItem(key);
 		if (raw) {
 			try {
 				const json = JSON.parse(raw);
@@ -474,6 +506,22 @@ export class ProjectStorage {
 			} catch (err) {
 				console.error(
 					'[ProjectStorage] Error parsing stored project JSON from localStorage:',
+					err,
+				);
+			}
+		}
+
+		const bakRaw = localStorage.getItem(`${key}_bak`);
+		if (bakRaw) {
+			try {
+				console.warn(
+					`[ProjectStorage] Recovered project ${projectId} from localStorage backup`,
+				);
+				const json = JSON.parse(bakRaw);
+				return ProjectStorage.deserializeProject(json);
+			} catch (err) {
+				console.error(
+					'[ProjectStorage] Error parsing backup project JSON from localStorage:',
 					err,
 				);
 			}

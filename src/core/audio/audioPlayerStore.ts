@@ -2,6 +2,7 @@ import type { LoopRegion } from '@core/model/item/TrackItem';
 import { DesktopBridge } from '@core/persistence/DesktopBridge';
 import { getBlobUrlForFile, getLocalMediaUrl } from '@core/utils/mediaUtils';
 import { getOrExtractWaveformPeaks } from '@core/utils/WaveformService';
+import { notify } from '@services/NotificationService';
 
 /**
  * Interface representing the data structure for a track currently playing or loaded in the audio player.
@@ -162,6 +163,11 @@ class AudioPlayerStore {
 							return;
 						}
 					}
+				}
+				if (this.currentTrack?.title) {
+					notify.error(
+						`Could not play audio track "${this.currentTrack.title}"`,
+					);
 				}
 				this.isPlaying = false;
 				this.notify();
