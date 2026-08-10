@@ -157,10 +157,10 @@ describe('mediaUtils', () => {
 		it('should cache and revoke blob URLs', async () => {
 			vi.mocked(DesktopBridge.isTauri).mockReturnValue(true);
 			vi.mocked(DesktopBridge.readFileBinary).mockResolvedValue(
-				new Uint8Array([1, 2, 3]),
+				new Uint8Array([1, 2, 3]).buffer as ArrayBuffer,
 			);
-			global.URL.createObjectURL = vi.fn(() => 'blob:mock');
-			global.URL.revokeObjectURL = vi.fn();
+			globalThis.URL.createObjectURL = vi.fn(() => 'blob:mock');
+			globalThis.URL.revokeObjectURL = vi.fn();
 
 			const url1 = await getBlobUrlForFile('/cache/file.mp3');
 			expect(url1).toBe('blob:mock');
@@ -171,22 +171,22 @@ describe('mediaUtils', () => {
 			expect(DesktopBridge.readFileBinary).toHaveBeenCalledTimes(1);
 
 			revokeBlobUrlForFile('/cache/file.mp3');
-			expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock');
+			expect(globalThis.URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock');
 		});
 
 		it('clearBlobUrlCache should empty cache', async () => {
 			vi.mocked(DesktopBridge.isTauri).mockReturnValue(true);
 			vi.mocked(DesktopBridge.readFileBinary).mockResolvedValue(
-				new Uint8Array([1, 2, 3]),
+				new Uint8Array([1, 2, 3]).buffer as ArrayBuffer,
 			);
-			global.URL.createObjectURL = vi.fn(() => 'blob:mock');
-			global.URL.revokeObjectURL = vi.fn();
+			globalThis.URL.createObjectURL = vi.fn(() => 'blob:mock');
+			globalThis.URL.revokeObjectURL = vi.fn();
 
 			await getBlobUrlForFile('/cache/file2.mp3');
 			expect(DesktopBridge.readFileBinary).toHaveBeenCalledTimes(1);
 
 			clearBlobUrlCache();
-			expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock');
+			expect(globalThis.URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock');
 
 			await getBlobUrlForFile('/cache/file2.mp3');
 			expect(DesktopBridge.readFileBinary).toHaveBeenCalledTimes(2);
