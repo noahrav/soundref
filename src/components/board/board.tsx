@@ -21,6 +21,7 @@ import { useBoardShortcuts } from '@components/board/hooks/useBoardShortcuts';
 import { useBoardSync } from '@components/board/hooks/useBoardSync';
 import { CreateProjectModal } from '@components/project/CreateProjectModal';
 import { clearBlobUrlCache } from '@core/utils/mediaUtils';
+import { ToastContainer } from './components/ToastContainer';
 
 /**
  * Props for Board component.
@@ -241,6 +242,8 @@ export default function Board({
 				<MiniPlayer />
 				<BoardToolbar onOpenTrackModal={handleOpenTrackModal} />
 			</Tldraw>
+
+			<ToastContainer />
 
 			<TrackFormModal
 				isOpen={isTrackModalOpen}
