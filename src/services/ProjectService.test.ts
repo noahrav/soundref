@@ -1,5 +1,6 @@
 import { CommandManager } from '@core/command/CommandManager';
 import { StickyNoteItem } from '@core/model/item/StickyNoteItem';
+import type { TrackItem } from '@core/model/item/TrackItem';
 import type { Project } from '@core/model/Project';
 import { ProjectService } from '@services/ProjectService';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
