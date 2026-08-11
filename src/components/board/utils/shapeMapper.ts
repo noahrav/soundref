@@ -83,6 +83,7 @@ export function shapeToDomainPayload(shape: any): any | null {
 			sourceType: p?.sourceType || 'local',
 			playMode: p?.playMode || 'oneshot',
 			loopRegion: p?.loopRegion || { start: 0, end: 0 },
+			channelId: p?.channelId || 'master',
 			scale: p?.scale || 1,
 			width: p?.w || 200,
 		};
@@ -153,6 +154,7 @@ export function createShapeFromDomainItem(
 				sourceType: trackItem.sourceType || 'local',
 				playMode: trackItem.playMode || 'oneshot',
 				loopRegion: trackItem.loopRegion || { start: 0, end: 0 },
+				channelId: trackItem.channelId || 'master',
 				w: trackItem.width || 200,
 				h: trackItem.width || 200,
 			},

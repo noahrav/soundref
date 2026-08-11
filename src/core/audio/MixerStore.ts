@@ -1,5 +1,5 @@
 import type { MixerState } from '@core/model/MixerState';
-import { createDefaultMixerState } from '@core/model/MixerState';
+import { createDefaultMixerState, createChannelState } from '@core/model/MixerState';
 import { mixerEngine } from '@core/audio/MixerEngine';
 
 /**
@@ -119,6 +119,14 @@ class MixerStore {
 		mixerEngine.setMasterPan(this.state.master.pan);
 		mixerEngine.setMasterMute(this.state.master.isMuted);
 
+		this.state.channels.forEach(ch => {
+			mixerEngine.createChannel(ch.id, ch.name);
+			mixerEngine.setChannelVolume(ch.id, ch.volume);
+			mixerEngine.setChannelPan(ch.id, ch.pan);
+			mixerEngine.setChannelMute(ch.id, ch.isMuted);
+			mixerEngine.setChannelSolo(ch.id, ch.isSolo);
+		});
+
 		this.notify(true);
 	}
 
@@ -186,6 +194,87 @@ class MixerStore {
 				isSolo: !this.state.master.isSolo,
 			},
 		};
+		this.notify(true);
+	}
+
+	public addChannel(name?: string): string {
+		const count = this.state.channels.length + 1;
+		const id = `ch-${Date.now()}-${count}`;
+		const channelName = name || `Channel ${count}`;
+		
+		const newChannel = createChannelState(id, channelName);
+		
+		this.state = {
+			...this.state,
+			channels: [...this.state.channels, newChannel]
+		};
+		
+		mixerEngine.createChannel(id, channelName);
+		this.notify(true);
+		
+		return id;
+	}
+
+	public removeChannel(id: string): void {
+		this.state = {
+			...this.state,
+			channels: this.state.channels.filter(ch => ch.id !== id)
+		};
+		mixerEngine.removeChannel(id);
+		this.notify(true);
+	}
+
+	public setChannelVolume(id: string, volume: number): void {
+		const clamped = Math.max(0, Math.min(1.5, volume));
+		this.state = {
+			...this.state,
+			channels: this.state.channels.map(ch => 
+				ch.id === id ? { ...ch, volume: clamped } : ch
+			)
+		};
+		mixerEngine.setChannelVolume(id, clamped);
+		this.notify(false);
+	}
+
+	public setChannelPan(id: string, pan: number): void {
+		const clamped = Math.max(-1, Math.min(1, pan));
+		this.state = {
+			...this.state,
+			channels: this.state.channels.map(ch => 
+				ch.id === id ? { ...ch, pan: clamped } : ch
+			)
+		};
+		mixerEngine.setChannelPan(id, clamped);
+		this.notify(false);
+	}
+
+	public toggleChannelMute(id: string): void {
+		const channel = this.state.channels.find(ch => ch.id === id);
+		if (!channel) return;
+		const newMuted = !channel.isMuted;
+		
+		this.state = {
+			...this.state,
+			channels: this.state.channels.map(ch => 
+				ch.id === id ? { ...ch, isMuted: newMuted } : ch
+			)
+		};
+		mixerEngine.setChannelMute(id, newMuted);
+		this.notify(true);
+	}
+
+	public toggleChannelSolo(id: string): void {
+		const channel = this.state.channels.find(ch => ch.id === id);
+		if (!channel) return;
+		const newSolo = !channel.isSolo;
+		
+		this.state = {
+			...this.state,
+			channels: this.state.channels.map(ch => 
+				ch.id === id ? { ...ch, isSolo: newSolo } : ch
+			)
+		};
+		mixerEngine.setChannelSolo(id, newSolo);
 		this.notify(true);
 	}
 }

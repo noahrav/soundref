@@ -41,6 +41,20 @@ export function createDefaultMasterState(): ChannelState {
 }
 
 /**
+ * Creates a new channel state.
+ */
+export function createChannelState(id: string, name: string): ChannelState {
+	return {
+		id,
+		name,
+		volume: 1.0,
+		pan: 0.0,
+		isMuted: false,
+		isSolo: false,
+	};
+}
+
+/**
  * Creates a default mixer state with only a master channel.
  */
 export function createDefaultMixerState(): MixerState {

@@ -499,6 +499,10 @@ export function useBoardSync(
 							updateProps.loopRegion = trackItem.loopRegion;
 							needsUpdate = true;
 						}
+						if (shapeProps.channelId !== trackItem.channelId) {
+							updateProps.channelId = trackItem.channelId;
+							needsUpdate = true;
+						}
 					} else if (
 						item instanceof ImageItem ||
 						(item as any).type === 'ImageItem'

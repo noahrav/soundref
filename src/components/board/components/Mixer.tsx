@@ -334,6 +334,7 @@ interface ChannelStripProps {
 	onPanChange: (val: number) => void;
 	onMuteToggle: () => void;
 	onSoloToggle: () => void;
+	onDelete?: () => void;
 	vuLeftRef?: (el: HTMLDivElement | null) => void;
 	vuRightRef?: (el: HTMLDivElement | null) => void;
 }
@@ -345,6 +346,7 @@ export const ChannelStrip = ({
 	onPanChange,
 	onMuteToggle,
 	onSoloToggle,
+	onDelete,
 	vuLeftRef,
 	vuRightRef,
 }: ChannelStripProps) => {
@@ -363,9 +365,14 @@ export const ChannelStrip = ({
 		channelState.volume === 0 ? t('mixer.infDb') : `${channelDb.toFixed(1)} dB`;
 
 	return (
-		<div className="mixer__channel-strip">
+		<div className={`mixer__channel-strip ${isMaster ? 'mixer__channel-strip--master' : ''}`}>
 			<div className="mixer__channel-header">
-				{isMaster ? t('mixer.master') : channelState.name}
+				<span>{isMaster ? t('mixer.master') : channelState.name}</span>
+				{!isMaster && onDelete && (
+					<button className="mixer__btn-delete-channel" onClick={onDelete}>
+						&times;
+					</button>
+				)}
 			</div>
 
 			<div className="mixer__channel-pan">
@@ -448,16 +455,11 @@ export const Mixer = () => {
 
 	const coverUrl = useMediaUrl(currentTrack?.imageUrl);
 
-	const vuRef = useRef<{
-		left: HTMLDivElement | null;
-		right: HTMLDivElement | null;
-	}>({
-		left: null,
-		right: null,
-	});
+	const vuRefs = useRef<
+		Record<string, { left: HTMLDivElement | null; right: HTMLDivElement | null }>
+	>({});
 	const rafRef = useRef<number>(0);
-	const levelLeftRef = useRef<number>(0);
-	const levelRightRef = useRef<number>(0);
+	const levelRefs = useRef<Record<string, { left: number; right: number }>>({});
 
 	useEffect(() => {
 		const unsubMixer = mixerStore.subscribe(() => {
@@ -477,32 +479,50 @@ export const Mixer = () => {
 		if (!isOpen) return;
 
 		const updateVU = () => {
-			const rawLevels = mixerEngine.getMasterLevels();
-
 			const attack = 0.95;
 			const decay = 0.85;
 
-			let nextLeft =
-				rawLevels.left > levelLeftRef.current
-					? levelLeftRef.current * (1 - attack) + rawLevels.left * attack
-					: levelLeftRef.current * decay;
+			const updateChannelVU = (id: string, rawLevels: { left: number; right: number }) => {
+				if (!levelRefs.current[id]) {
+					levelRefs.current[id] = { left: 0, right: 0 };
+				}
 
-			let nextRight =
-				rawLevels.right > levelRightRef.current
-					? levelRightRef.current * (1 - attack) + rawLevels.right * attack
-					: levelRightRef.current * decay;
+				const currentLevels = levelRefs.current[id];
 
-			if (nextLeft < 0.002) nextLeft = 0;
-			if (nextRight < 0.002) nextRight = 0;
+				let nextLeft =
+					rawLevels.left > currentLevels.left
+						? currentLevels.left * (1 - attack) + rawLevels.left * attack
+						: currentLevels.left * decay;
 
-			levelLeftRef.current = nextLeft;
-			levelRightRef.current = nextRight;
+				let nextRight =
+					rawLevels.right > currentLevels.right
+						? currentLevels.right * (1 - attack) + rawLevels.right * attack
+						: currentLevels.right * decay;
 
-			if (vuRef.current.left) {
-				vuRef.current.left.style.height = `${Math.min(100, nextLeft * 100)}%`;
-			}
-			if (vuRef.current.right) {
-				vuRef.current.right.style.height = `${Math.min(100, nextRight * 100)}%`;
+				if (nextLeft < 0.002) nextLeft = 0;
+				if (nextRight < 0.002) nextRight = 0;
+
+				levelRefs.current[id].left = nextLeft;
+				levelRefs.current[id].right = nextRight;
+
+				const refs = vuRefs.current[id];
+				if (refs) {
+					if (refs.left) {
+						refs.left.style.height = `${Math.min(100, nextLeft * 100)}%`;
+					}
+					if (refs.right) {
+						refs.right.style.height = `${Math.min(100, nextRight * 100)}%`;
+					}
+				}
+			};
+
+			// Update Master
+			updateChannelVU('master', mixerEngine.getMasterLevels());
+
+			// Update User Channels
+			const state = mixerStore.getState();
+			for (const ch of state.channels) {
+				updateChannelVU(ch.id, mixerEngine.getChannelLevels(ch.id));
 			}
 
 			rafRef.current = requestAnimationFrame(updateVU);
@@ -657,6 +677,7 @@ export const Mixer = () => {
 						</div>
 
 						<div className="mixer__channels">
+							{/* Master Channel (Fixed on the left) */}
 							<ChannelStrip
 								channelState={mixerState.master}
 								isMaster
@@ -665,12 +686,52 @@ export const Mixer = () => {
 								onMuteToggle={() => mixerStore.toggleMasterMute()}
 								onSoloToggle={() => mixerStore.toggleMasterSolo()}
 								vuLeftRef={(el) => {
-									vuRef.current.left = el;
+									if (!vuRefs.current['master'])
+										vuRefs.current['master'] = { left: null, right: null };
+									vuRefs.current['master'].left = el;
 								}}
 								vuRightRef={(el) => {
-									vuRef.current.right = el;
+									if (!vuRefs.current['master'])
+										vuRefs.current['master'] = { left: null, right: null };
+									vuRefs.current['master'].right = el;
 								}}
 							/>
+
+							{/* User Channels (Scrollable container to the right of Master) */}
+							<div className="mixer__user-channels">
+								{mixerState.channels.map((ch) => (
+									<ChannelStrip
+										key={ch.id}
+										channelState={ch}
+										onVolumeChange={(val) =>
+											mixerStore.setChannelVolume(ch.id, val)
+										}
+										onPanChange={(val) => mixerStore.setChannelPan(ch.id, val)}
+										onMuteToggle={() => mixerStore.toggleChannelMute(ch.id)}
+										onSoloToggle={() => mixerStore.toggleChannelSolo(ch.id)}
+										onDelete={() => mixerStore.removeChannel(ch.id)}
+										vuLeftRef={(el) => {
+											if (!vuRefs.current[ch.id])
+												vuRefs.current[ch.id] = { left: null, right: null };
+											vuRefs.current[ch.id].left = el;
+										}}
+										vuRightRef={(el) => {
+											if (!vuRefs.current[ch.id])
+												vuRefs.current[ch.id] = { left: null, right: null };
+											vuRefs.current[ch.id].right = el;
+										}}
+									/>
+								))}
+								<div className="mixer__add-channel">
+									<button
+										type="button"
+										className="mixer__btn-add-channel"
+										onClick={() => mixerStore.addChannel()}
+									>
+										+ Add Channel
+									</button>
+								</div>
+							</div>
 						</div>
 					</div>
 				</div>

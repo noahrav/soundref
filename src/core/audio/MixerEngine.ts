@@ -1,3 +1,18 @@
+interface ChannelNodes {
+	id: string;
+	input: GainNode;
+	gain: GainNode;
+	pan: StereoPannerNode;
+	splitter: ChannelSplitterNode;
+	analyserL: AnalyserNode;
+	analyserR: AnalyserNode;
+	volume: number;
+	panVal: number;
+	isMuted: boolean;
+	isSolo: boolean;
+	savedGain: number;
+}
+
 /**
  * Singleton Web Audio API mixer engine managing the audio processing graph.
  * Inspired by DAW architectures: all audio routes through a master bus
@@ -22,6 +37,8 @@ class MixerEngine {
 	private masterPan: number = 0.0;
 	private savedMasterGain: number = 1.0;
 	private isMasterMuted: boolean = false;
+
+	private userChannels: Map<string, ChannelNodes> = new Map();
 
 	private constructor() {}
 
@@ -182,6 +199,171 @@ class MixerEngine {
 				);
 			}
 		}
+	}
+
+	public createChannel(id: string, _name: string): void {
+		if (this.userChannels.has(id)) return;
+		const ctx = this.ensureContext();
+
+		const input = ctx.createGain();
+		const gain = ctx.createGain();
+		const pan = ctx.createStereoPanner();
+		const splitter = ctx.createChannelSplitter(2);
+		const analyserL = ctx.createAnalyser();
+		const analyserR = ctx.createAnalyser();
+
+		analyserL.fftSize = 256;
+		analyserL.smoothingTimeConstant = 0.8;
+		analyserR.fftSize = 256;
+		analyserR.smoothingTimeConstant = 0.8;
+
+		input.connect(gain);
+		gain.connect(pan);
+		pan.connect(this.masterInputNode!);
+
+		pan.connect(splitter);
+		splitter.connect(analyserL, 0);
+		splitter.connect(analyserR, 1);
+
+		this.userChannels.set(id, {
+			id,
+			input,
+			gain,
+			pan,
+			splitter,
+			analyserL,
+			analyserR,
+			volume: 1.0,
+			panVal: 0.0,
+			isMuted: false,
+			isSolo: false,
+			savedGain: 1.0,
+		});
+
+		this.updateSoloMuteLogic();
+	}
+
+	public removeChannel(id: string): void {
+		const channel = this.userChannels.get(id);
+		if (channel) {
+			channel.input.disconnect();
+			channel.gain.disconnect();
+			channel.pan.disconnect();
+			channel.splitter.disconnect();
+			channel.analyserL.disconnect();
+			channel.analyserR.disconnect();
+			this.userChannels.delete(id);
+			this.updateSoloMuteLogic();
+		}
+	}
+
+	public getChannelInput(channelId: string): AudioNode {
+		if (channelId === 'master') return this.getMasterInput();
+		const channel = this.userChannels.get(channelId);
+		return channel ? channel.input : this.getMasterInput();
+	}
+
+	public setChannelVolume(id: string, volume: number): void {
+		const channel = this.userChannels.get(id);
+		if (!channel) return;
+
+		const clampedValue = Math.max(0, Math.min(1.5, volume));
+		channel.volume = clampedValue;
+		if (!channel.isMuted) {
+			channel.savedGain = clampedValue;
+		}
+		this.updateSoloMuteLogic();
+	}
+
+	public setChannelPan(id: string, panVal: number): void {
+		const channel = this.userChannels.get(id);
+		if (!channel) return;
+
+		const clampedValue = Math.max(-1, Math.min(1, panVal));
+		channel.panVal = clampedValue;
+
+		if (this.audioCtx) {
+			const now = this.audioCtx.currentTime;
+			channel.pan.pan.cancelScheduledValues(now);
+			channel.pan.pan.setValueAtTime(clampedValue, now);
+		}
+	}
+
+	public setChannelMute(id: string, muted: boolean): void {
+		const channel = this.userChannels.get(id);
+		if (!channel) return;
+
+		channel.isMuted = muted;
+		this.updateSoloMuteLogic();
+	}
+
+	public setChannelSolo(id: string, solo: boolean): void {
+		const channel = this.userChannels.get(id);
+		if (!channel) return;
+
+		channel.isSolo = solo;
+		this.updateSoloMuteLogic();
+	}
+
+	public updateSoloMuteLogic(): void {
+		if (!this.audioCtx) return;
+		const now = this.audioCtx.currentTime;
+
+		let anySolo = false;
+		for (const channel of this.userChannels.values()) {
+			if (channel.isSolo) {
+				anySolo = true;
+				break;
+			}
+		}
+
+		for (const channel of this.userChannels.values()) {
+			let targetGain = channel.volume;
+			if (channel.isMuted) {
+				targetGain = 0;
+			} else if (anySolo && !channel.isSolo) {
+				targetGain = 0;
+			}
+
+			channel.gain.gain.cancelScheduledValues(now);
+			channel.gain.gain.setValueAtTime(channel.gain.gain.value, now);
+			channel.gain.gain.linearRampToValueAtTime(targetGain, now + 0.01);
+		}
+	}
+
+	public getChannelLevels(id: string): { left: number; right: number } {
+		const channel = this.userChannels.get(id);
+		if (!channel) return { left: 0, right: 0 };
+
+		const leftData = new Uint8Array(channel.analyserL.frequencyBinCount);
+		const rightData = new Uint8Array(channel.analyserR.frequencyBinCount);
+
+		channel.analyserL.getByteFrequencyData(leftData);
+		channel.analyserR.getByteFrequencyData(rightData);
+
+		const computeRms = (data: Uint8Array): number => {
+			if (data.length === 0) return 0;
+			let sum = 0;
+			for (let i = 0; i < data.length; i++) {
+				const normalized = data[i] / 255;
+				sum += normalized * normalized;
+			}
+			return Math.sqrt(sum / data.length);
+		};
+
+		return {
+			left: computeRms(leftData),
+			right: computeRms(rightData),
+		};
+	}
+
+	public getChannelFrequencyData(id: string): Uint8Array {
+		if (id === 'master') return this.getMasterFrequencyData();
+		const channel = this.userChannels.get(id);
+		if (!channel) return this.getMasterFrequencyData();
+		const data = new Uint8Array(channel.analyserL.frequencyBinCount);
+		channel.analyserL.getByteFrequencyData(data);
+		return data;
 	}
 
 	/**

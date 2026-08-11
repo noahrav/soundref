@@ -76,6 +76,8 @@
 		"imageItem": "Image",
 		"groupItem": "Section",
 		"editTrack": "Modifier la piste audio",
+		"routeToChannel": "Routage audio",
+		"newChannel": "Nouveau channel",
 		"renameSection": "Renommer la section",
 		"noteColor": "Couleur",
 		"color_yellow": "Jaune",
@@ -154,6 +156,8 @@
 		"panCenter": "C",
 		"panLeft": "G",
 		"panRight": "D",
-		"infDb": "-∞"
+		"infDb": "-∞",
+		"addChannel": "Ajouter un channel",
+		"deleteChannel": "Supprimer le channel"
 	}
 }

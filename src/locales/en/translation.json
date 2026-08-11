@@ -76,6 +76,8 @@
 		"imageItem": "Image",
 		"groupItem": "Section",
 		"editTrack": "Edit Track",
+		"routeToChannel": "Route to Channel",
+		"newChannel": "New Channel",
 		"renameSection": "Rename Section",
 		"noteColor": "Color",
 		"color_yellow": "Yellow",
@@ -154,6 +156,8 @@
 		"panCenter": "C",
 		"panLeft": "L",
 		"panRight": "R",
-		"infDb": "-∞"
+		"infDb": "-∞",
+		"addChannel": "Add Channel",
+		"deleteChannel": "Delete Channel"
 	}
 }

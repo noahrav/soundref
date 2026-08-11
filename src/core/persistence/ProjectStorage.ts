@@ -52,6 +52,7 @@ export interface ProjectDataJSON {
 			sourceType?: 'local' | 'stream';
 			playMode?: 'oneshot' | 'loop';
 			loopRegion?: { start: number; end: number };
+			channelId?: string;
 		}>;
 	}>;
 	/** Optional mixer state for the project */
@@ -256,7 +257,9 @@ export class ProjectStorage {
 							imageUrl,
 							audioSource,
 							sourceType: trackItem.sourceType || 'local',
+							playMode: trackItem.playMode || 'oneshot',
 							loopRegion: trackItem.loopRegion || { start: 0, end: 0 },
+							channelId: trackItem.channelId || 'master',
 							scale: trackItem.scale || 1,
 							width: trackItem.width || 200,
 						};
@@ -380,6 +383,7 @@ export class ProjectStorage {
 								itemJson.id,
 								itemJson.scale || 1,
 								itemJson.width || 200,
+								itemJson.channelId || 'master',
 							);
 						} else if (
 							itemJson.type === 'ImageItem' ||
