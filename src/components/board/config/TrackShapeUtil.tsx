@@ -11,6 +11,7 @@ declare module 'tldraw' {
 			sourceType: 'local' | 'stream';
 			playMode: 'oneshot' | 'loop';
 			loopRegion: { start: number; end: number };
+			channelId?: string;
 			scale: number;
 			w: number;
 			h: number;
@@ -40,6 +41,7 @@ export class TrackShapeUtil extends BaseBoxShapeUtil<TLTrackShape> {
 			sourceType: 'local',
 			playMode: 'oneshot',
 			loopRegion: { start: 0, end: 0 },
+			channelId: 'master',
 			scale: 1,
 			w: 200,
 			h: 200,

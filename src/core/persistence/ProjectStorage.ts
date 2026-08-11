@@ -1,9 +1,11 @@
+import { mixerStore } from '@core/audio/MixerStore';
 import type { BoardItem } from '@core/model/item/BoardItem';
 import { ImageItem } from '@core/model/item/ImageItem';
 import { SectionItem } from '@core/model/item/SectionItem';
 import { StickyNoteItem } from '@core/model/item/StickyNoteItem';
 import { TextItem } from '@core/model/item/TextItem';
 import { TrackItem } from '@core/model/item/TrackItem';
+import type { MixerState } from '@core/model/MixerState';
 import { Position } from '@core/model/Position';
 import { Project } from '@core/model/Project';
 import { ViewportState } from '@core/model/ViewportState';
@@ -50,8 +52,28 @@ export interface ProjectDataJSON {
 			sourceType?: 'local' | 'stream';
 			playMode?: 'oneshot' | 'loop';
 			loopRegion?: { start: number; end: number };
+			channelId?: string;
 		}>;
 	}>;
+	/** Optional mixer state for the project */
+	mixer?: {
+		master: {
+			id: string;
+			name: string;
+			volume: number;
+			pan: number;
+			isMuted: boolean;
+			isSolo: boolean;
+		};
+		channels: Array<{
+			id: string;
+			name: string;
+			volume: number;
+			pan: number;
+			isMuted: boolean;
+			isSolo: boolean;
+		}>;
+	};
 }
 
 /**
@@ -235,7 +257,9 @@ export class ProjectStorage {
 							imageUrl,
 							audioSource,
 							sourceType: trackItem.sourceType || 'local',
+							playMode: trackItem.playMode || 'oneshot',
 							loopRegion: trackItem.loopRegion || { start: 0, end: 0 },
+							channelId: trackItem.channelId || 'master',
 							scale: trackItem.scale || 1,
 							width: trackItem.width || 200,
 						};
@@ -359,6 +383,7 @@ export class ProjectStorage {
 								itemJson.id,
 								itemJson.scale || 1,
 								itemJson.width || 200,
+								itemJson.channelId || 'master',
 							);
 						} else if (
 							itemJson.type === 'ImageItem' ||
@@ -422,17 +447,29 @@ export class ProjectStorage {
 
 	/**
 	 * Saves full project data to desktop file system (soundref.json) and localStorage.
+	 * Also maintains a .bak copy of previous state for disaster recovery.
 	 * @param project Project instance to persist.
 	 */
 	public static async saveProjectData(project: Project): Promise<void> {
 		await ProjectStorage.saveProjectToRegistry(project);
 
-		const data = ProjectStorage.serializeProject(project);
+		let data = ProjectStorage.serializeProject(project);
+
+		// Attach mixer state to project data
+		const mixerState = mixerStore.getState();
+		data = ProjectStorage.attachMixerState(data, mixerState);
+
 		const jsonStr = JSON.stringify(data, null, 2);
 
 		if (DesktopBridge.isTauri() && project.path) {
 			await DesktopBridge.createDir(project.path);
 			const filePath = formatSoundrefJsonPath(project.path);
+			const bakPath = `${filePath}.bak`;
+
+			if (await DesktopBridge.fileExists(filePath)) {
+				await DesktopBridge.copyFile(filePath, bakPath);
+			}
+
 			const written = await DesktopBridge.writeTextFile(filePath, jsonStr);
 			if (written) {
 				console.log(`[ProjectStorage] Saved project data to ${filePath}`);
@@ -440,11 +477,16 @@ export class ProjectStorage {
 		}
 
 		const key = `soundref_data_${project.id}`;
+		const existingLocal = localStorage.getItem(key);
+		if (existingLocal) {
+			localStorage.setItem(`${key}_bak`, existingLocal);
+		}
 		localStorage.setItem(key, jsonStr);
 	}
 
 	/**
 	 * Loads full project data by reading desktop file system or localStorage.
+	 * Falls back to .bak backup files if primary data file is missing or corrupted.
 	 * @param projectId Project ID string.
 	 * @param projectPath Project folder path string.
 	 * @returns Promise resolving to loaded Project instance or null.
@@ -455,21 +497,47 @@ export class ProjectStorage {
 	): Promise<Project | null> {
 		if (DesktopBridge.isTauri() && projectPath) {
 			const filePath = formatSoundrefJsonPath(projectPath);
+			const bakPath = `${filePath}.bak`;
+
 			const content = await DesktopBridge.readTextFile(filePath);
 			if (content) {
 				try {
 					const json = JSON.parse(content);
+					const mixerData = ProjectStorage.extractMixerState(json);
+					if (mixerData) mixerStore.loadState(mixerData);
 					return ProjectStorage.deserializeProject(json);
 				} catch (err) {
 					console.error(`[ProjectStorage] Error parsing ${filePath}:`, err);
 				}
 			}
+
+			// Fallback to .bak file
+			const bakContent = await DesktopBridge.readTextFile(bakPath);
+			if (bakContent) {
+				try {
+					console.warn(
+						`[ProjectStorage] Recovered project from backup file ${bakPath}`,
+					);
+					const json = JSON.parse(bakContent);
+					const mixerData = ProjectStorage.extractMixerState(json);
+					if (mixerData) mixerStore.loadState(mixerData);
+					return ProjectStorage.deserializeProject(json);
+				} catch (bakErr) {
+					console.error(
+						`[ProjectStorage] Error parsing backup file ${bakPath}:`,
+						bakErr,
+					);
+				}
+			}
 		}
 
-		const raw = localStorage.getItem(`soundref_data_${projectId}`);
+		const key = `soundref_data_${projectId}`;
+		const raw = localStorage.getItem(key);
 		if (raw) {
 			try {
 				const json = JSON.parse(raw);
+				const mixerData = ProjectStorage.extractMixerState(json);
+				if (mixerData) mixerStore.loadState(mixerData);
 				return ProjectStorage.deserializeProject(json);
 			} catch (err) {
 				console.error(
@@ -479,6 +547,85 @@ export class ProjectStorage {
 			}
 		}
 
+		const bakRaw = localStorage.getItem(`${key}_bak`);
+		if (bakRaw) {
+			try {
+				console.warn(
+					`[ProjectStorage] Recovered project ${projectId} from localStorage backup`,
+				);
+				const json = JSON.parse(bakRaw);
+				const mixerData = ProjectStorage.extractMixerState(json);
+				if (mixerData) mixerStore.loadState(mixerData);
+				return ProjectStorage.deserializeProject(json);
+			} catch (err) {
+				console.error(
+					'[ProjectStorage] Error parsing backup project JSON from localStorage:',
+					err,
+				);
+			}
+		}
+
 		return null;
+	}
+	/**
+	 * Serializes mixer state into the project JSON data.
+	 * @param data Existing project data JSON.
+	 * @param mixerState Current mixer state to serialize.
+	 * @returns Updated ProjectDataJSON with mixer state.
+	 */
+	public static attachMixerState(
+		data: ProjectDataJSON,
+		mixerState: MixerState,
+	): ProjectDataJSON {
+		return {
+			...data,
+			mixer: {
+				master: {
+					id: mixerState.master.id,
+					name: mixerState.master.name,
+					volume: mixerState.master.volume,
+					pan: mixerState.master.pan,
+					isMuted: mixerState.master.isMuted,
+					isSolo: mixerState.master.isSolo,
+				},
+				channels: mixerState.channels.map((ch) => ({
+					id: ch.id,
+					name: ch.name,
+					volume: ch.volume,
+					pan: ch.pan,
+					isMuted: ch.isMuted,
+					isSolo: ch.isSolo,
+				})),
+			},
+		};
+	}
+
+	/**
+	 * Extracts mixer state from deserialized project JSON data.
+	 * @param json Project data JSON.
+	 * @returns MixerState if present, undefined otherwise.
+	 */
+	public static extractMixerState(
+		json: ProjectDataJSON,
+	): MixerState | undefined {
+		if (!json.mixer) return undefined;
+		return {
+			master: {
+				id: json.mixer.master?.id || 'master',
+				name: json.mixer.master?.name || 'Master',
+				volume: json.mixer.master?.volume ?? 1.0,
+				pan: json.mixer.master?.pan ?? 0.0,
+				isMuted: json.mixer.master?.isMuted ?? false,
+				isSolo: json.mixer.master?.isSolo ?? false,
+			},
+			channels: (json.mixer.channels || []).map((ch) => ({
+				id: ch.id,
+				name: ch.name || 'Channel',
+				volume: ch.volume ?? 1.0,
+				pan: ch.pan ?? 0.0,
+				isMuted: ch.isMuted ?? false,
+				isSolo: ch.isSolo ?? false,
+			})),
+		};
 	}
 }

@@ -76,6 +76,8 @@
 		"imageItem": "Image",
 		"groupItem": "Section",
 		"editTrack": "Edit Track",
+		"routeToChannel": "Route to Channel",
+		"newChannel": "New Channel",
 		"renameSection": "Rename Section",
 		"noteColor": "Color",
 		"color_yellow": "Yellow",
@@ -142,5 +144,20 @@
 		"convertSuccess_zero": "All files have already been converted.",
 		"convertSuccess_one": "Successfully converted {{count}} file!",
 		"convertSuccess_other": "Successfully converted {{count}} files!"
+	},
+	"mixer": {
+		"title": "Mixer",
+		"master": "Master",
+		"mute": "Mute",
+		"solo": "Solo",
+		"pan": "Pan",
+		"volume": "Volume",
+		"toggleMixer": "Toggle Mixer",
+		"panCenter": "C",
+		"panLeft": "L",
+		"panRight": "R",
+		"infDb": "-∞",
+		"addChannel": "Add Channel",
+		"deleteChannel": "Delete Channel"
 	}
 }

@@ -1,7 +1,9 @@
+import { mixerEngine } from '@core/audio/MixerEngine';
 import type { LoopRegion } from '@core/model/item/TrackItem';
 import { DesktopBridge } from '@core/persistence/DesktopBridge';
 import { getBlobUrlForFile, getLocalMediaUrl } from '@core/utils/mediaUtils';
 import { getOrExtractWaveformPeaks } from '@core/utils/WaveformService';
+import { notify } from '@services/NotificationService';
 
 /**
  * Interface representing the data structure for a track currently playing or loaded in the audio player.
@@ -25,6 +27,8 @@ export interface PlayingTrackData {
 	playMode: 'oneshot' | 'loop';
 	/** Optional loop region start and end boundaries in seconds */
 	loopRegion?: LoopRegion;
+	/** Optional channel ID for multi-channel routing */
+	channelId?: string;
 }
 
 /**
@@ -36,177 +40,26 @@ type AudioPlayerListener = () => void;
  * Singleton Audio Player Store managing playback state, audio context node graph,
  * frequency analysis for visualizers, and state change subscriptions.
  */
+interface ChannelPlayback {
+	audioElement: HTMLAudioElement;
+	mediaSource: MediaElementAudioSourceNode | null;
+	currentTrack: PlayingTrackData | null;
+	isPlaying: boolean;
+	currentTime: number;
+	duration: number;
+}
+
 class AudioPlayerStore {
 	private static _instance: AudioPlayerStore;
 
-	private currentTrack: PlayingTrackData | null = null;
-	private isPlaying: boolean = false;
-	private currentTime: number = 0;
-	private duration: number = 0;
-	private audioElement: HTMLAudioElement | null = null;
+	private channels: Map<string, ChannelPlayback> = new Map();
+	private lastActiveTrack: PlayingTrackData | null = null;
+
 	private listeners: Set<AudioPlayerListener> = new Set();
 	private audioPeaksMap: Map<string, number[]> = new Map();
 
-	private audioCtx: AudioContext | null = null;
-	private analyserNode: AnalyserNode | null = null;
-	private mediaElementSource: MediaElementAudioSourceNode | null = null;
+	private constructor() {}
 
-	/**
-	 * Private constructor initializing HTMLAudioElement event listeners.
-	 */
-	private constructor() {
-		if (typeof window !== 'undefined') {
-			this.audioElement = new Audio();
-			this.audioElement.crossOrigin = 'anonymous';
-
-			let lastNotifyTime = 0;
-			this.audioElement.addEventListener('timeupdate', () => {
-				if (!this.audioElement) return;
-				this.currentTime = this.audioElement.currentTime;
-
-				if (this.currentTrack?.playMode === 'loop') {
-					const start = this.currentTrack.loopRegion?.start ?? 0;
-					const end =
-						this.currentTrack.loopRegion?.end &&
-						this.currentTrack.loopRegion.end > start
-							? this.currentTrack.loopRegion.end
-							: this.duration;
-
-					if (end > start && this.currentTime >= end) {
-						this.audioElement.currentTime = start;
-					}
-				}
-
-				const now = Date.now();
-				if (now - lastNotifyTime > 250) {
-					lastNotifyTime = now;
-					this.notify();
-				}
-			});
-
-			this.audioElement.addEventListener('loadedmetadata', () => {
-				if (!this.audioElement) return;
-				this.duration = this.audioElement.duration || 0;
-				const start = this.currentTrack?.loopRegion?.start ?? 0;
-				if (
-					this.currentTrack?.playMode === 'loop' &&
-					start > 0 &&
-					start < this.duration
-				) {
-					try {
-						this.audioElement.currentTime = start;
-					} catch (e) {
-						console.warn('[AudioPlayer] Seek in loadedmetadata failed:', e);
-					}
-				}
-				this.notify();
-			});
-
-			this.audioElement.addEventListener('ended', () => {
-				if (this.currentTrack?.playMode === 'loop') {
-					if (this.audioElement) {
-						const start = this.currentTrack.loopRegion?.start ?? 0;
-						this.audioElement.currentTime = start;
-						this.audioElement.play().catch(() => {});
-					}
-				} else {
-					this.isPlaying = false;
-					this.notify();
-				}
-			});
-
-			this.audioElement.addEventListener('play', () => {
-				this.isPlaying = true;
-				this.initAudioContext();
-				this.notify();
-			});
-
-			this.audioElement.addEventListener('pause', () => {
-				this.isPlaying = false;
-				this.notify();
-			});
-
-			this.audioElement.addEventListener('error', async () => {
-				const error = this.audioElement?.error;
-				console.error('[AudioPlayer] HTMLAudioElement error event:', error);
-
-				if (
-					this.currentTrack?.sourceType === 'local' &&
-					this.currentTrack.audioSource
-				) {
-					const currentSrc = this.audioElement?.src || '';
-					if (!currentSrc.startsWith('blob:') && DesktopBridge.isTauri()) {
-						console.log(
-							'[AudioPlayer] Attempting Blob URL fallback for local audio...',
-						);
-						const blobUrl = await getBlobUrlForFile(
-							this.currentTrack.audioSource,
-						);
-						if (blobUrl && this.audioElement) {
-							this.audioElement.src = blobUrl;
-							this.audioElement.load();
-							this.audioElement
-								.play()
-								.then(() => {
-									this.isPlaying = true;
-									this.notify();
-								})
-								.catch((fallbackErr) => {
-									console.error(
-										'[AudioPlayer] Blob fallback play failed:',
-										fallbackErr,
-									);
-									this.isPlaying = false;
-									this.notify();
-								});
-							return;
-						}
-					}
-				}
-				this.isPlaying = false;
-				this.notify();
-			});
-		}
-	}
-
-	/**
-	 * Initializes Web Audio API Context and AnalyserNode graph for real-time frequency analysis.
-	 */
-	private initAudioContext(): void {
-		if (this.audioCtx || !this.audioElement) return;
-		try {
-			const AudioContextClass =
-				window.AudioContext ||
-				(window as unknown as { webkitAudioContext: typeof AudioContext })
-					.webkitAudioContext;
-			this.audioCtx = new AudioContextClass();
-			this.analyserNode = this.audioCtx.createAnalyser();
-			this.analyserNode.fftSize = 64;
-			this.mediaElementSource = this.audioCtx.createMediaElementSource(
-				this.audioElement,
-			);
-			this.mediaElementSource.connect(this.analyserNode);
-			this.analyserNode.connect(this.audioCtx.destination);
-		} catch (e) {
-			console.warn('[AudioPlayer] Could not init Web Audio Analyser:', e);
-		}
-	}
-
-	/**
-	 * Retrieves real-time byte frequency data from the AnalyserNode.
-	 * @returns Uint8Array containing frequency values ranging from 0 to 255.
-	 */
-	public getRealtimeFrequencyData(): Uint8Array {
-		if (!this.analyserNode) return new Uint8Array(0);
-		const data = new Uint8Array(this.analyserNode.frequencyBinCount);
-		this.analyserNode.getByteFrequencyData(data);
-		return data;
-	}
-
-	/**
-	 * Returns the singleton instance of AudioPlayerStore.
-	 * @returns AudioPlayerStore instance.
-	 */
 	public static instance(): AudioPlayerStore {
 		if (!AudioPlayerStore._instance) {
 			AudioPlayerStore._instance = new AudioPlayerStore();
@@ -214,11 +67,6 @@ class AudioPlayerStore {
 		return AudioPlayerStore._instance;
 	}
 
-	/**
-	 * Subscribes a listener callback to audio player state notifications.
-	 * @param listener Function to invoke when state updates.
-	 * @returns Unsubscribe cleanup function.
-	 */
 	public subscribe(listener: AudioPlayerListener): () => void {
 		this.listeners.add(listener);
 		return () => {
@@ -226,45 +74,230 @@ class AudioPlayerStore {
 		};
 	}
 
-	/**
-	 * Notifies all registered listeners of a state change.
-	 */
 	private notify(): void {
 		this.listeners.forEach((l) => {
 			l();
 		});
 	}
 
-	/**
-	 * Gets a snapshot of the current audio player state.
-	 * @returns Object containing currentTrack, isPlaying, currentTime, and duration.
-	 */
+	private getOrCreateChannel(channelId: string): ChannelPlayback {
+		const existing = this.channels.get(channelId);
+		if (existing) {
+			return existing;
+		}
+
+		const audioElement = new Audio();
+		audioElement.crossOrigin = 'anonymous';
+
+		const channel: ChannelPlayback = {
+			audioElement,
+			mediaSource: null,
+			currentTrack: null,
+			isPlaying: false,
+			currentTime: 0,
+			duration: 0,
+		};
+
+		this.channels.set(channelId, channel);
+
+		let lastNotifyTime = 0;
+		audioElement.addEventListener('timeupdate', () => {
+			channel.currentTime = audioElement.currentTime;
+
+			if (channel.currentTrack?.playMode === 'loop') {
+				const start = channel.currentTrack.loopRegion?.start ?? 0;
+				const end =
+					channel.currentTrack.loopRegion?.end &&
+					channel.currentTrack.loopRegion.end > start
+						? channel.currentTrack.loopRegion.end
+						: channel.duration;
+
+				if (end > start && channel.currentTime >= end) {
+					audioElement.currentTime = start;
+				}
+			}
+
+			const now = Date.now();
+			if (now - lastNotifyTime > 250) {
+				lastNotifyTime = now;
+				this.notify();
+			}
+		});
+
+		audioElement.addEventListener('loadedmetadata', () => {
+			channel.duration = audioElement.duration || 0;
+			const start = channel.currentTrack?.loopRegion?.start ?? 0;
+			if (
+				channel.currentTrack?.playMode === 'loop' &&
+				start > 0 &&
+				start < channel.duration
+			) {
+				try {
+					audioElement.currentTime = start;
+				} catch (_e) {}
+			}
+			this.notify();
+		});
+
+		audioElement.addEventListener('ended', () => {
+			if (channel.currentTrack?.playMode === 'loop') {
+				const start = channel.currentTrack.loopRegion?.start ?? 0;
+				audioElement.currentTime = start;
+				audioElement.play().catch(() => {});
+			} else {
+				channel.isPlaying = false;
+				this.notify();
+			}
+		});
+
+		audioElement.addEventListener('play', () => {
+			channel.isPlaying = true;
+			this.initAudioContext(channelId, channel);
+			this.notify();
+		});
+
+		audioElement.addEventListener('pause', () => {
+			channel.isPlaying = false;
+			this.notify();
+		});
+
+		audioElement.addEventListener('error', async () => {
+			if (
+				channel.currentTrack?.sourceType === 'local' &&
+				channel.currentTrack.audioSource
+			) {
+				const currentSrc = audioElement.src || '';
+				if (!currentSrc.startsWith('blob:') && DesktopBridge.isTauri()) {
+					const blobUrl = await getBlobUrlForFile(
+						channel.currentTrack.audioSource,
+					);
+					if (blobUrl) {
+						audioElement.src = blobUrl;
+						audioElement.load();
+						audioElement
+							.play()
+							.then(() => {
+								channel.isPlaying = true;
+								this.notify();
+							})
+							.catch(() => {
+								channel.isPlaying = false;
+								this.notify();
+							});
+						return;
+					}
+				}
+			}
+			if (channel.currentTrack?.title) {
+				notify.error(
+					`Could not play audio track "${channel.currentTrack.title}"`,
+				);
+			}
+			channel.isPlaying = false;
+			this.notify();
+		});
+
+		return channel;
+	}
+
+	private initAudioContext(channelId: string, channel: ChannelPlayback): void {
+		try {
+			const ctx = mixerEngine.ensureContext();
+			if (!channel.mediaSource) {
+				channel.mediaSource = ctx.createMediaElementSource(
+					channel.audioElement,
+				);
+			}
+			try {
+				channel.mediaSource.disconnect();
+			} catch (_e) {}
+
+			const targetInput = mixerEngine.getChannelInput(channelId);
+			channel.mediaSource.connect(targetInput);
+		} catch (e) {
+			console.warn('[AudioPlayer] Could not init Web Audio Analyser:', e);
+		}
+	}
+
 	public getState() {
+		const playingTracks: PlayingTrackData[] = [];
+		for (const ch of this.channels.values()) {
+			if (ch.currentTrack) {
+				playingTracks.push(ch.currentTrack);
+			}
+		}
+
+		let isPlaying = false;
+		let currentTime = 0;
+		let duration = 0;
+
+		if (this.lastActiveTrack) {
+			const channelId = this.lastActiveTrack.channelId || 'master';
+			const channel = this.channels.get(channelId);
+			if (channel) {
+				isPlaying = channel.isPlaying;
+				currentTime = channel.currentTime;
+				duration = channel.duration;
+			}
+		}
+
 		return {
-			currentTrack: this.currentTrack,
-			isPlaying: this.isPlaying,
-			currentTime: this.currentTime,
-			duration: this.duration,
+			currentTrack: this.lastActiveTrack,
+			playingTracks,
+			isPlaying,
+			currentTime,
+			duration,
 		};
 	}
 
-	/**
-	 * Starts playing a track or toggles playback if the track is already active.
-	 * Supports both local files and streaming audio sources.
-	 * @param track PlayingTrackData object containing track parameters.
-	 */
 	public async playTrack(track: PlayingTrackData): Promise<void> {
-		if (this.currentTrack?.id === track.id) {
-			this.togglePlayPause();
+		const channelId = track.channelId || 'master';
+
+		// Stop this track if it was currently active/playing on a DIFFERENT channel
+		for (const [chId, ch] of this.channels.entries()) {
+			if (chId !== channelId && ch.currentTrack?.id === track.id) {
+				ch.audioElement.pause();
+				ch.audioElement.currentTime = 0;
+				ch.isPlaying = false;
+				ch.currentTrack = null;
+			}
+		}
+
+		const channel = this.getOrCreateChannel(channelId);
+
+		if (channel.currentTrack?.id === track.id) {
+			if (channel.audioElement.src) {
+				const ctx = mixerEngine.getAudioContext();
+				if (ctx && ctx.state === 'suspended') {
+					mixerEngine.resumeContext().catch(() => {});
+				}
+				if (channel.isPlaying) {
+					channel.audioElement.pause();
+				} else {
+					channel.audioElement.play().catch(() => {});
+				}
+			} else {
+				channel.isPlaying = !channel.isPlaying;
+				this.notify();
+			}
+			this.lastActiveTrack = track;
 			return;
 		}
 
-		this.stop();
-		this.currentTrack =
-			track.sourceType === 'stream' ? { ...track, playMode: 'oneshot' } : track;
-		this.currentTime = 0;
+		if (channel.audioElement) {
+			channel.audioElement.pause();
+			channel.audioElement.currentTime = 0;
+		}
 
-		if (this.audioElement && track.audioSource) {
+		const normalizedTrack =
+			track.sourceType === 'stream'
+				? { ...track, playMode: 'oneshot' as const }
+				: track;
+		channel.currentTrack = normalizedTrack;
+		channel.currentTime = 0;
+		this.lastActiveTrack = normalizedTrack;
+
+		if (channel.audioElement && track.audioSource) {
 			let src =
 				track.sourceType === 'local'
 					? getLocalMediaUrl(track.audioSource)
@@ -290,49 +323,41 @@ class AudioPlayerStore {
 				src.startsWith('data:');
 
 			if (isDirectPlayable) {
-				if (this.audioElement.src !== src) {
-					this.audioElement.src = src;
-					this.audioElement.load();
+				if (channel.audioElement.src !== src) {
+					channel.audioElement.src = src;
+					channel.audioElement.load();
 				}
 
-				if (this.audioCtx && this.audioCtx.state === 'suspended') {
-					this.audioCtx.resume().catch(() => {});
+				const ctx = mixerEngine.getAudioContext();
+				if (ctx && ctx.state === 'suspended') {
+					mixerEngine.resumeContext().catch(() => {});
 				}
 
-				this.audioElement
+				channel.audioElement
 					.play()
 					.then(() => {
-						this.isPlaying = true;
+						channel.isPlaying = true;
 						this.notify();
 					})
-					.catch(async (err) => {
-						console.warn(
-							'[AudioPlayer] Direct play attempt failed or iframe embed required:',
-							err,
-						);
+					.catch(async () => {
 						if (
 							track.sourceType === 'local' &&
 							DesktopBridge.isTauri() &&
 							!src.startsWith('blob:')
 						) {
 							const blobUrl = await getBlobUrlForFile(track.audioSource);
-							if (blobUrl && this.audioElement) {
-								this.audioElement.src = blobUrl;
-								this.audioElement.load();
+							if (blobUrl) {
+								channel.audioElement.src = blobUrl;
+								channel.audioElement.load();
 								try {
-									await this.audioElement.play();
-									this.isPlaying = true;
+									await channel.audioElement.play();
+									channel.isPlaying = true;
 									this.notify();
 									return;
-								} catch (fallbackErr) {
-									console.error(
-										'[AudioPlayer] Blob fallback play failed:',
-										fallbackErr,
-									);
-								}
+								} catch (_fallbackErr) {}
 							}
 						}
-						this.isPlaying = true;
+						channel.isPlaying = true;
 						this.notify();
 					});
 
@@ -340,84 +365,91 @@ class AudioPlayerStore {
 					this.extractWaveformPeaks(track.id, track.audioSource, src);
 				}
 			} else {
-				this.isPlaying = true;
+				channel.isPlaying = true;
 				this.notify();
 			}
 		} else {
-			this.isPlaying = true;
+			channel.isPlaying = true;
 			this.notify();
 		}
 	}
 
-	/**
-	 * Toggles playback between play and pause states for the currently active track.
-	 */
-	public togglePlayPause(): void {
-		if (!this.currentTrack) return;
-		if (this.audioElement?.src) {
-			if (this.audioCtx && this.audioCtx.state === 'suspended') {
-				this.audioCtx.resume().catch(() => {});
-			}
-			if (this.isPlaying) {
-				this.audioElement.pause();
-			} else {
-				this.audioElement.play().catch(() => {});
-			}
-		} else {
-			this.isPlaying = !this.isPlaying;
-			this.notify();
-		}
-	}
-
-	/**
-	 * Stops audio playback and resets player state.
-	 */
 	public stop(): void {
-		if (this.audioElement) {
-			this.audioElement.pause();
-			this.audioElement.currentTime = 0;
+		for (const ch of this.channels.values()) {
+			if (ch.audioElement) {
+				ch.audioElement.pause();
+				ch.audioElement.currentTime = 0;
+			}
+			ch.currentTrack = null;
+			ch.isPlaying = false;
+			ch.currentTime = 0;
+			ch.duration = 0;
 		}
-		this.currentTrack = null;
-		this.isPlaying = false;
-		this.currentTime = 0;
-		this.duration = 0;
+		this.lastActiveTrack = null;
 		this.notify();
 	}
 
-	/**
-	 * Seeks playback position to specified timestamp in seconds.
-	 * @param time Target playback time in seconds.
-	 */
+	public togglePlayPause(): void {
+		// Toggle the last active track's channel
+		if (!this.lastActiveTrack) return;
+		const channelId = this.lastActiveTrack.channelId || 'master';
+		const channel = this.channels.get(channelId);
+		if (channel?.audioElement?.src) {
+			const ctx = mixerEngine.getAudioContext();
+			if (ctx && ctx.state === 'suspended') {
+				mixerEngine.resumeContext().catch(() => {});
+			}
+			if (channel.isPlaying) {
+				channel.audioElement.pause();
+			} else {
+				channel.audioElement.play().catch(() => {});
+			}
+		}
+	}
+
 	public seekTo(time: number): void {
-		if (this.audioElement) {
-			this.audioElement.currentTime = time;
-			this.currentTime = time;
+		if (!this.lastActiveTrack) return;
+		const channelId = this.lastActiveTrack.channelId || 'master';
+		const channel = this.channels.get(channelId);
+		if (channel?.audioElement) {
+			channel.audioElement.currentTime = time;
+			channel.currentTime = time;
 			this.notify();
 		}
 	}
 
-	/**
-	 * Retrieves cached waveform peaks for a track.
-	 * @param trackId Unique ID of the track.
-	 * @returns Array of peak numerical values or undefined if not cached.
-	 */
+	public isTrackPlaying(shapeId: string): boolean {
+		for (const ch of this.channels.values()) {
+			if (ch.currentTrack?.shapeId === shapeId && ch.isPlaying) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public isTrackActive(shapeId: string): boolean {
+		for (const ch of this.channels.values()) {
+			if (ch.currentTrack?.shapeId === shapeId) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public getRealtimeFrequencyData(channelId?: string): Uint8Array {
+		return mixerEngine.getChannelFrequencyData(channelId || 'master');
+	}
+
 	public getPeaks(trackId: string): number[] | undefined {
 		return this.audioPeaksMap.get(trackId);
 	}
 
-	/**
-	 * Asynchronously extracts waveform peaks for visual presentation.
-	 * @param trackId Unique ID of the track.
-	 * @param path File system path of the audio file.
-	 * @param src Resolved URL source of the audio.
-	 */
 	private extractWaveformPeaks(
 		trackId: string,
 		path: string,
 		src: string,
 	): void {
 		if (this.audioPeaksMap.has(trackId)) return;
-
 		getOrExtractWaveformPeaks(trackId, src, path, 100).then((peaks) => {
 			this.audioPeaksMap.set(trackId, peaks);
 			this.notify();

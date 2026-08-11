@@ -1,10 +1,42 @@
 use std::fs::{self, File};
-use std::io::{Read, Write};
 use std::path::Path;
 use tauri::Manager;
 use walkdir::WalkDir;
 use zip::write::SimpleFileOptions;
 use zip::ZipWriter;
+
+fn validate_path(path_str: &str) -> Result<std::path::PathBuf, String> {
+    if path_str.contains('\0') {
+        return Err("Invalid path: contains null byte".to_string());
+    }
+
+    let path = Path::new(path_str);
+
+    let path_buf = if path.exists() {
+        path.canonicalize().map_err(|e| e.to_string())?
+    } else {
+        let parent = path.parent().ok_or("Invalid path: no parent directory")?;
+        let parent_canon = if parent.exists() {
+            parent.canonicalize().map_err(|e| e.to_string())?
+        } else {
+            parent.to_path_buf()
+        };
+        let file_name = path.file_name().ok_or("Invalid path: missing file name")?;
+        parent_canon.join(file_name)
+    };
+
+    let is_temp = path_buf.starts_with(std::env::temp_dir());
+    let is_home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .map(|h| path_buf.starts_with(Path::new(&h)))
+        .unwrap_or(false);
+
+    if !is_home && !is_temp {
+        return Err(format!("Access denied: path '{}' is outside allowed directories", path_buf.display()));
+    }
+
+    Ok(path_buf)
+}
 
 #[tauri::command]
 fn pick_folder() -> Option<String> {
@@ -14,21 +46,25 @@ fn pick_folder() -> Option<String> {
 
 #[tauri::command]
 fn read_text_file(path: String) -> Result<String, String> {
-    fs::read_to_string(&path).map_err(|e| e.to_string())
+    let safe_path = validate_path(&path)?;
+    fs::read_to_string(&safe_path).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn write_text_file(path: String, content: String) -> Result<(), String> {
-    let path_obj = Path::new(&path);
-    if let Some(parent) = path_obj.parent() {
+    let safe_path = validate_path(&path)?;
+    if let Some(parent) = safe_path.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-    fs::write(&path, content).map_err(|e| e.to_string())
+    let tmp_path = safe_path.with_extension("tmp");
+    fs::write(&tmp_path, content).map_err(|e| e.to_string())?;
+    fs::rename(&tmp_path, &safe_path).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn create_dir(path: String) -> Result<(), String> {
-    fs::create_dir_all(&path).map_err(|e| e.to_string())
+    let safe_path = validate_path(&path)?;
+    fs::create_dir_all(&safe_path).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -61,17 +97,18 @@ fn pick_image_file() -> Option<String> {
 
 #[tauri::command]
 fn read_file_binary(path: String) -> Result<tauri::ipc::Response, String> {
-    let bytes = fs::read(&path).map_err(|e| e.to_string())?;
+    let safe_path = validate_path(&path)?;
+    let bytes = fs::read(&safe_path).map_err(|e| e.to_string())?;
     Ok(tauri::ipc::Response::new(bytes))
 }
 
 #[tauri::command]
 fn open_folder(path: String) -> Result<(), String> {
-    let path_obj = Path::new(&path);
-    let target_dir = if path_obj.is_file() {
-        path_obj.parent().unwrap_or(path_obj)
+    let safe_path = validate_path(&path)?;
+    let target_dir = if safe_path.is_file() {
+        safe_path.parent().unwrap_or(&safe_path)
     } else {
-        path_obj
+        &safe_path
     };
 
     #[cfg(target_os = "windows")]
@@ -100,11 +137,12 @@ fn open_folder(path: String) -> Result<(), String> {
 
 #[tauri::command]
 fn copy_file(from: String, to: String) -> Result<(), String> {
-    let path_obj = Path::new(&to);
-    if let Some(parent) = path_obj.parent() {
+    let safe_from = validate_path(&from)?;
+    let safe_to = validate_path(&to)?;
+    if let Some(parent) = safe_to.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-    fs::copy(&from, &to).map_err(|e| e.to_string())?;
+    fs::copy(&safe_from, &safe_to).map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -150,9 +188,7 @@ fn create_zip_archive_impl(src_dir: &str, dest_zip_path: &Path) -> Result<(), St
             zip.start_file(path_str, options)
                 .map_err(|e| e.to_string())?;
             let mut f = File::open(entry_path).map_err(|e| e.to_string())?;
-            let mut buffer = Vec::new();
-            f.read_to_end(&mut buffer).map_err(|e| e.to_string())?;
-            zip.write_all(&buffer).map_err(|e| e.to_string())?;
+            std::io::copy(&mut f, &mut zip).map_err(|e| e.to_string())?;
         }
     }
 

@@ -278,7 +278,6 @@ export class DesktopBridge {
 	public static async exitApp(): Promise<void> {
 		if (DesktopBridge.isTauri()) {
 			try {
-				const { invoke } = await import('@tauri-apps/api/core');
 				await invoke('exit_app');
 			} catch (err) {
 				console.error(

@@ -5,6 +5,8 @@ import {
 } from '@components/board/utils/embedUtils';
 import { toRichText } from '@components/board/utils/richText';
 import { getSectionBoundsForSelection } from '@components/board/utils/sectionUtils';
+import { audioPlayer } from '@core/audio/audioPlayerStore';
+import { mixerStore } from '@core/audio/MixerStore';
 import { DesktopBridge } from '@core/persistence/DesktopBridge';
 import { getImageDimensions } from '@core/utils/mediaUtils';
 import { formatShortcut } from '@core/utils/shortcutUtils';
@@ -14,6 +16,7 @@ import {
 	faAngleDoubleUp,
 	faArrowDown,
 	faArrowUp,
+	faCheck,
 	faChevronRight,
 	faFont,
 	faImage,
@@ -57,6 +60,8 @@ interface SubmenuItemDef {
 	icon?: IconDefinition;
 	/** Optional custom hex color dot string */
 	colorDot?: string;
+	/** Whether this item is just a visual divider */
+	divider?: boolean;
 	/** Callback function on selection */
 	onSelect: () => void;
 }
@@ -265,6 +270,125 @@ export const CustomContextMenu = track(function CustomContextMenu({
 												);
 											}
 										},
+									},
+									{
+										id: 'route-to-channel',
+										label: t('contextMenu.routeToChannel'),
+										onSelect: () => {},
+										submenu: [
+											{
+												id: 'route-master',
+												label: 'Master',
+												icon:
+													!singleSelectedShape?.props.channelId ||
+													singleSelectedShape.props.channelId === 'master'
+														? faCheck
+														: undefined,
+												onSelect: () => {
+													if (singleSelectedShape) {
+														const p = singleSelectedShape.props;
+														editor.updateShape({
+															id: singleSelectedShape.id,
+															type: 'track',
+															props: { ...p, channelId: 'master' },
+														});
+														const state = audioPlayer.getState();
+														if (
+															state.currentTrack?.shapeId ===
+															singleSelectedShape.id
+														) {
+															audioPlayer.playTrack({
+																id: singleSelectedShape.id,
+																shapeId: singleSelectedShape.id,
+																pageId: editor.getCurrentPageId(),
+																title: p.title || 'Track',
+																imageUrl: p.imageUrl || '',
+																audioSource: p.audioSource || '',
+																sourceType: p.sourceType || 'local',
+																playMode: p.playMode || 'oneshot',
+																loopRegion: p.loopRegion,
+																channelId: 'master',
+															});
+														}
+													}
+												},
+											},
+											...mixerStore.getState().channels.map((ch) => ({
+												id: `route-${ch.id}`,
+												label: ch.name,
+												icon:
+													singleSelectedShape?.props.channelId === ch.id
+														? faCheck
+														: undefined,
+												onSelect: () => {
+													if (singleSelectedShape) {
+														const p = singleSelectedShape.props;
+														editor.updateShape({
+															id: singleSelectedShape.id,
+															type: 'track',
+															props: { ...p, channelId: ch.id },
+														});
+														const state = audioPlayer.getState();
+														if (
+															state.currentTrack?.shapeId ===
+															singleSelectedShape.id
+														) {
+															audioPlayer.playTrack({
+																id: singleSelectedShape.id,
+																shapeId: singleSelectedShape.id,
+																pageId: editor.getCurrentPageId(),
+																title: p.title || 'Track',
+																imageUrl: p.imageUrl || '',
+																audioSource: p.audioSource || '',
+																sourceType: p.sourceType || 'local',
+																playMode: p.playMode || 'oneshot',
+																loopRegion: p.loopRegion,
+																channelId: ch.id,
+															});
+														}
+													}
+												},
+											})),
+											{
+												id: 'route-divider',
+												label: '',
+												divider: true,
+												onSelect: () => {},
+											},
+											{
+												id: 'new-channel',
+												label: t('contextMenu.newChannel'),
+												onSelect: () => {
+													const newId = mixerStore.addChannel();
+													if (singleSelectedShape) {
+														const p = singleSelectedShape.props;
+														editor.updateShape({
+															id: singleSelectedShape.id,
+															type: 'track',
+															props: { ...p, channelId: newId },
+														});
+														const state = audioPlayer.getState();
+														if (
+															state.currentTrack?.shapeId ===
+															singleSelectedShape.id
+														) {
+															audioPlayer.playTrack({
+																id: singleSelectedShape.id,
+																shapeId: singleSelectedShape.id,
+																pageId: editor.getCurrentPageId(),
+																title: p.title || 'Track',
+																imageUrl: p.imageUrl || '',
+																audioSource: p.audioSource || '',
+																sourceType: p.sourceType || 'local',
+																playMode: p.playMode || 'oneshot',
+																loopRegion: p.loopRegion,
+																channelId: newId,
+															});
+														}
+													}
+												},
+											},
+										],
 									},
 								],
 							},
@@ -830,39 +954,62 @@ export const CustomContextMenu = track(function CustomContextMenu({
 
 										{item.submenu && (
 											<div className="context-menu__submenu">
-												{item.submenu.map((sub) => (
-													<button
-														type="button"
-														key={sub.id}
-														className="context-menu__item"
-														onClick={() => {
-															sub.onSelect();
-															closeMenu();
-														}}
-													>
-														{sub.colorDot ? (
-															<span
-																className="context-menu__color-dot"
+												{item.submenu.map((sub) => {
+													if (sub.divider) {
+														return (
+															<div
+																key={sub.id}
 																style={{
-																	width: 12,
-																	height: 12,
-																	borderRadius: '50%',
-																	backgroundColor: sub.colorDot,
-																	border: '1px solid rgba(0, 0, 0, 0.25)',
-																	display: 'inline-block',
-																	flexShrink: 0,
-																	marginRight: 8,
+																	height: 1,
+																	background: 'rgba(255,255,255,0.1)',
+																	margin: '4px 0',
 																}}
 															/>
-														) : sub.icon ? (
-															<FontAwesomeIcon
-																icon={sub.icon}
-																style={{ width: 14 }}
-															/>
-														) : null}
-														<span>{sub.label}</span>
-													</button>
-												))}
+														);
+													}
+													return (
+														<button
+															type="button"
+															key={sub.id}
+															className="context-menu__item"
+															onClick={() => {
+																sub.onSelect();
+																closeMenu();
+															}}
+														>
+															{sub.colorDot ? (
+																<span
+																	className="context-menu__color-dot"
+																	style={{
+																		width: 12,
+																		height: 12,
+																		borderRadius: '50%',
+																		backgroundColor: sub.colorDot,
+																		border: '1px solid rgba(0, 0, 0, 0.25)',
+																		display: 'inline-block',
+																		flexShrink: 0,
+																		marginRight: 8,
+																	}}
+																/>
+															) : (
+																<div
+																	style={{
+																		width: 14,
+																		marginRight: 8,
+																		display: 'flex',
+																		alignItems: 'center',
+																		justifyContent: 'center',
+																	}}
+																>
+																	{sub.icon && (
+																		<FontAwesomeIcon icon={sub.icon} />
+																	)}
+																</div>
+															)}
+															<span>{sub.label}</span>
+														</button>
+													);
+												})}
 											</div>
 										)}
 									</div>

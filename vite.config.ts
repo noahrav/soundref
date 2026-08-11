@@ -10,10 +10,10 @@ export default defineConfig(async () => ({
 	plugins: [react()],
 	resolve: {
 		alias: {
-			'@components': path.resolve(__dirname, './src/components'),
-			'@core': path.resolve(__dirname, './src/core'),
-			'@locales': path.resolve(__dirname, './src/locales'),
-			'@services': path.resolve(__dirname, './src/services'),
+			'@components': path.resolve(import.meta.dirname, './src/components'),
+			'@core': path.resolve(import.meta.dirname, './src/core'),
+			'@locales': path.resolve(import.meta.dirname, './src/locales'),
+			'@services': path.resolve(import.meta.dirname, './src/services'),
 		},
 	},
 	test: {
@@ -21,6 +21,27 @@ export default defineConfig(async () => ({
 		environment: 'node',
 		setupFiles: './src/tests/setup.ts',
 		include: ['src/**/*.{test,spec}.{ts,tsx}'],
+	},
+	build: {
+		chunkSizeWarningLimit: 2500,
+		rollupOptions: {
+			output: {
+				manualChunks(id) {
+					if (id.includes('node_modules/tldraw')) {
+						return 'tldraw';
+					}
+					if (id.includes('node_modules/@fortawesome')) {
+						return 'fontawesome';
+					}
+					if (
+						id.includes('node_modules/react') ||
+						id.includes('node_modules/react-dom')
+					) {
+						return 'react-vendor';
+					}
+				},
+			},
+		},
 	},
 
 	// Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`

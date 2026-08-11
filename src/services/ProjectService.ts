@@ -1,3 +1,4 @@
+import { mixerStore } from '@core/audio/MixerStore';
 import { CommandManager } from '@core/command/CommandManager';
 import { CreateWorkspaceCommand } from '@core/command/project/CreateWorkspaceCommand';
 import { DeleteWorkspaceCommand } from '@core/command/project/DeleteWorkspaceCommand';
@@ -147,6 +148,10 @@ export class ProjectService {
 				try {
 					const json = JSON.parse(content);
 					json.path = folderPath;
+
+					const mixerData = ProjectStorage.extractMixerState(json);
+					if (mixerData) mixerStore.loadState(mixerData);
+
 					const project = ProjectStorage.deserializeProject(json);
 					this.activeProject = project;
 					CommandManager.instance().clear();
@@ -350,6 +355,7 @@ export class ProjectService {
 				itemA.playMode === itemB.playMode &&
 				itemA.width === itemB.width &&
 				itemA.scale === itemB.scale &&
+				itemA.channelId === itemB.channelId &&
 				itemA.loopRegion?.start === itemB.loopRegion?.start &&
 				itemA.loopRegion?.end === itemB.loopRegion?.end
 			);
@@ -398,6 +404,7 @@ export class ProjectService {
 			sourceType?: 'local' | 'stream';
 			playMode?: 'oneshot' | 'loop';
 			loopRegion?: { start: number; end: number };
+			channelId?: string;
 		}>,
 	): Promise<void> {
 		const cleanWsId = this.stripPagePrefix(workspaceId);
@@ -425,6 +432,7 @@ export class ProjectService {
 					p.id,
 					p.scale || 1,
 					p.width || 200,
+					p.channelId || 'master',
 				);
 			} else if (
 				p.type === 'ImageItem' ||
@@ -539,6 +547,7 @@ export class ProjectService {
 				undefined,
 				itemPayload.scale || 1,
 				itemPayload.width || 200,
+				itemPayload.channelId || 'master',
 			);
 		} else if (
 			itemPayload.type === 'ImageItem' ||

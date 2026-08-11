@@ -1,5 +1,6 @@
 import { CommandManager } from '@core/command/CommandManager';
 import { StickyNoteItem } from '@core/model/item/StickyNoteItem';
+import type { TrackItem } from '@core/model/item/TrackItem';
 import type { Project } from '@core/model/Project';
 import { ProjectService } from '@services/ProjectService';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -345,6 +346,32 @@ describe('ProjectService', () => {
 
 			await service.redo();
 			expect((await service.getItems(project.id, workspace.id)).length).toBe(1);
+		});
+
+		it('should preserve TrackItem channelId when syncing workspace items', async () => {
+			const service = ProjectService.instance();
+			const project = await service.createProject(
+				'Channel Sync Test',
+				'/path/to/test',
+			);
+			const workspaces = await service.getWorkspaces(project.id);
+			const workspace = workspaces[0];
+
+			await service.syncWorkspaceItems(project.id, workspace.id, [
+				{
+					id: 'track-sync-1',
+					type: 'TrackItem',
+					x: 10,
+					y: 20,
+					title: 'Routed Track',
+					channelId: 'ch-custom-99',
+				},
+			]);
+
+			const items = await service.getItems(project.id, workspace.id);
+			expect(items.length).toBe(1);
+			const trackItem = items[0] as TrackItem;
+			expect(trackItem.channelId).toBe('ch-custom-99');
 		});
 	});
 });

@@ -76,6 +76,8 @@
 		"imageItem": "Image",
 		"groupItem": "Section",
 		"editTrack": "Modifier la piste audio",
+		"routeToChannel": "Routage audio",
+		"newChannel": "Nouveau channel",
 		"renameSection": "Renommer la section",
 		"noteColor": "Couleur",
 		"color_yellow": "Jaune",
@@ -142,5 +144,20 @@
 		"convertSuccess_zero": "Tous les fichiers ont déjà été convertis.",
 		"convertSuccess_one": "{{count}} fichier converti avec succès !",
 		"convertSuccess_other": "{{count}} fichiers convertis avec succès !"
+	},
+	"mixer": {
+		"title": "Mixeur",
+		"master": "Master",
+		"mute": "Muet",
+		"solo": "Solo",
+		"pan": "Pan",
+		"volume": "Volume",
+		"toggleMixer": "Afficher/masquer le mixeur",
+		"panCenter": "C",
+		"panLeft": "G",
+		"panRight": "D",
+		"infDb": "-∞",
+		"addChannel": "Ajouter un channel",
+		"deleteChannel": "Supprimer le channel"
 	}
 }

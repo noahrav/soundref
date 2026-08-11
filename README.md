@@ -1,5 +1,7 @@
 # SoundRef
 
+![SoundRef logo](public/title-s.png)
+
 **SoundRef** is an interactive desktop application designed to help music producers, engineers, sound designers and artists organize audio reference. Built around an interactive visual canvas, it allows you to organize your audio references, notes, between multiple workspaces.
 
 Built with **Tauri v2**, **React 19**, **TypeScript**, **tldraw**, and **Rust**.

@@ -42,6 +42,7 @@ export class TrackItem extends BoardItem {
 		id?: string,
 		public scale: number = 1,
 		public width: number = 200,
+		public channelId: string = 'master',
 	) {
 		super(position, id);
 	}

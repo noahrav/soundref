@@ -1,5 +1,6 @@
 import type { TLTrackShape } from '@components/board/config/TrackShapeUtil';
 import { audioPlayer } from '@core/audio/audioPlayerStore';
+import { mixerStore } from '@core/audio/MixerStore';
 import { useMediaUrl } from '@core/utils/mediaUtils';
 import {
 	faMusic,
@@ -20,10 +21,12 @@ import { HTMLContainer, useEditor } from 'tldraw';
  */
 function SpectrogramOverlay({
 	isPlaying,
+	channelId,
 	width,
 	height,
 }: {
 	isPlaying: boolean;
+	channelId?: string;
 	width: number;
 	height: number;
 }) {
@@ -53,7 +56,7 @@ function SpectrogramOverlay({
 
 			ctx.clearRect(0, 0, width, height);
 
-			const rawData = audioPlayer.getRealtimeFrequencyData();
+			const rawData = audioPlayer.getRealtimeFrequencyData(channelId);
 			const hasRealData = rawData?.some((v) => v > 0);
 
 			const gap = 3;
@@ -98,7 +101,7 @@ function SpectrogramOverlay({
 		return () => {
 			if (animId) cancelAnimationFrame(animId);
 		};
-	}, [isPlaying, width, height]);
+	}, [isPlaying, channelId, width, height]);
 
 	if (!isPlaying) return null;
 
@@ -130,10 +133,8 @@ export function TrackCardComponent({ shape }: { shape: TLTrackShape }) {
 	 * @returns Object with isPlayingThis and isActiveThis boolean flags.
 	 */
 	const checkState = useCallback(() => {
-		const state = audioPlayer.getState();
-		const isPlayingThis =
-			state.currentTrack?.shapeId === shape.id && state.isPlaying;
-		const isActiveThis = state.currentTrack?.shapeId === shape.id;
+		const isPlayingThis = audioPlayer.isTrackPlaying(shape.id);
+		const isActiveThis = audioPlayer.isTrackActive(shape.id);
 		return { isPlayingThis, isActiveThis };
 	}, [shape.id]);
 
@@ -145,10 +146,20 @@ export function TrackCardComponent({ shape }: { shape: TLTrackShape }) {
 		sourceType,
 		playMode,
 		loopRegion,
+		channelId,
 		w,
 		h,
 	} = shape.props;
 	const resolvedImageUrl = useMediaUrl(imageUrl);
+
+	const [channels, setChannels] = useState(mixerStore.getState().channels);
+
+	useEffect(() => {
+		const unsub = mixerStore.subscribe(() => {
+			setChannels(mixerStore.getState().channels);
+		});
+		return unsub;
+	}, []);
 
 	useEffect(() => {
 		const unsubscribe = audioPlayer.subscribe(() => {
@@ -185,6 +196,7 @@ export function TrackCardComponent({ shape }: { shape: TLTrackShape }) {
 			sourceType: sourceType || 'local',
 			playMode: playMode || 'oneshot',
 			loopRegion,
+			channelId: channelId || 'master',
 		});
 	};
 
@@ -199,6 +211,49 @@ export function TrackCardComponent({ shape }: { shape: TLTrackShape }) {
 			new CustomEvent('soundref:edit-track', { detail: shape }),
 		);
 	};
+
+	const handleBadgeClick = (e: React.MouseEvent) => {
+		e.stopPropagation();
+		const currentChannel = channelId || 'master';
+		let nextChannel = 'master';
+		if (currentChannel === 'master') {
+			if (channels.length > 0) {
+				nextChannel = channels[0].id;
+			}
+		} else {
+			const idx = channels.findIndex((c) => c.id === currentChannel);
+			if (idx !== -1 && idx < channels.length - 1) {
+				nextChannel = channels[idx + 1].id;
+			}
+		}
+		editor.updateShape({
+			id: shape.id,
+			type: 'track',
+			props: { channelId: nextChannel },
+		});
+
+		const state = audioPlayer.getState();
+		if (state.currentTrack?.shapeId === shape.id) {
+			audioPlayer.playTrack({
+				id: shape.id,
+				shapeId: shape.id,
+				pageId: editor.getCurrentPageId(),
+				title: title || 'Track',
+				imageUrl: imageUrl || '',
+				audioSource: audioSource || '',
+				sourceType: sourceType || 'local',
+				playMode: playMode || 'oneshot',
+				loopRegion,
+				channelId: nextChannel,
+			});
+		}
+	};
+
+	let badgeLabel = 'Master';
+	if (channelId && channelId !== 'master') {
+		const ch = channels.find((c) => c.id === channelId);
+		badgeLabel = ch ? ch.name.replace('Channel', 'Ch').trim() : 'Master';
+	}
 
 	const size = Math.min(w, h);
 
@@ -263,6 +318,7 @@ export function TrackCardComponent({ shape }: { shape: TLTrackShape }) {
 
 				<SpectrogramOverlay
 					isPlaying={isThisTrackPlaying}
+					channelId={channelId}
 					width={size}
 					height={size}
 				/>
@@ -296,6 +352,40 @@ export function TrackCardComponent({ shape }: { shape: TLTrackShape }) {
 					title={isThisTrackPlaying ? 'Pause' : 'Play'}
 				>
 					<FontAwesomeIcon icon={isThisTrackPlaying ? faPause : faPlay} />
+				</button>
+
+				{/* Channel Badge */}
+				{/* biome-ignore lint/a11y/useKeyWithMouseEvents: badge hover style */}
+				<button
+					type="button"
+					onPointerDown={(e) => e.stopPropagation()}
+					onClick={handleBadgeClick}
+					style={{
+						position: 'absolute',
+						top: 8,
+						left: 8,
+						zIndex: 5,
+						background: 'rgba(17, 17, 17, 0.85)',
+						backdropFilter: 'blur(4px)',
+						color: '#ffffff',
+						padding: '2px 6px',
+						borderRadius: '4px',
+						fontSize: '10px',
+						fontWeight: 600,
+						border: '1px solid rgba(255, 255, 255, 0.3)',
+						cursor: 'pointer',
+						pointerEvents: 'auto',
+						transition: 'background 0.12s ease',
+					}}
+					title="Click to cycle routing channel"
+					onMouseOver={(e) =>
+						(e.currentTarget.style.background = 'rgba(255,255,255,0.2)')
+					}
+					onMouseOut={(e) =>
+						(e.currentTarget.style.background = 'rgba(17, 17, 17, 0.85)')
+					}
+				>
+					{badgeLabel}
 				</button>
 
 				{playMode === 'loop' && (
