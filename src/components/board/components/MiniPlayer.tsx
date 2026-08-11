@@ -1,5 +1,6 @@
 import { parseStreamUrl } from '@components/board/utils/embedUtils';
 import { audioPlayer } from '@core/audio/audioPlayerStore';
+import { mixerStore } from '@core/audio/MixerStore';
 import { useMediaUrl } from '@core/utils/mediaUtils';
 import {
 	faCrosshairs,
@@ -22,18 +23,26 @@ export function MiniPlayer() {
 	const { t } = useTranslation();
 	const editor = useEditor();
 	const [playerState, setPlayerState] = useState(audioPlayer.getState());
+	const [mixerOpen, setMixerOpen] = useState(mixerStore.isOpen);
 
 	useEffect(() => {
-		const unsubscribe = audioPlayer.subscribe(() => {
+		const unsubscribePlayer = audioPlayer.subscribe(() => {
 			setPlayerState(audioPlayer.getState());
 		});
-		return unsubscribe;
+		const unsubscribeMixer = mixerStore.subscribe(() => {
+			setMixerOpen(mixerStore.isOpen);
+		});
+		return () => {
+			unsubscribePlayer();
+			unsubscribeMixer();
+		};
 	}, []);
 
 	const { currentTrack, isPlaying, currentTime, duration } = playerState;
 	const resolvedCoverUrl = useMediaUrl(currentTrack?.imageUrl);
 
 	if (!currentTrack) return null;
+	if (mixerOpen) return null;
 
 	const isLoop =
 		currentTrack.playMode === 'loop' &&

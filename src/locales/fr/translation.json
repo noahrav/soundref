@@ -142,5 +142,18 @@
 		"convertSuccess_zero": "Tous les fichiers ont déjà été convertis.",
 		"convertSuccess_one": "{{count}} fichier converti avec succès !",
 		"convertSuccess_other": "{{count}} fichiers convertis avec succès !"
+	},
+	"mixer": {
+		"title": "Mixeur",
+		"master": "Master",
+		"mute": "Muet",
+		"solo": "Solo",
+		"pan": "Pan",
+		"volume": "Volume",
+		"toggleMixer": "Afficher/masquer le mixeur",
+		"panCenter": "C",
+		"panLeft": "G",
+		"panRight": "D",
+		"infDb": "-∞"
 	}
 }

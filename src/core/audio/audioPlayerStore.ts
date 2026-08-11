@@ -3,6 +3,7 @@ import { DesktopBridge } from '@core/persistence/DesktopBridge';
 import { getBlobUrlForFile, getLocalMediaUrl } from '@core/utils/mediaUtils';
 import { getOrExtractWaveformPeaks } from '@core/utils/WaveformService';
 import { notify } from '@services/NotificationService';
+import { mixerEngine } from '@core/audio/MixerEngine';
 
 /**
  * Interface representing the data structure for a track currently playing or loaded in the audio player.
@@ -181,18 +182,14 @@ class AudioPlayerStore {
 	private initAudioContext(): void {
 		if (this.audioCtx || !this.audioElement) return;
 		try {
-			const AudioContextClass =
-				window.AudioContext ||
-				(window as unknown as { webkitAudioContext: typeof AudioContext })
-					.webkitAudioContext;
-			this.audioCtx = new AudioContextClass();
+			this.audioCtx = mixerEngine.ensureContext();
 			this.analyserNode = this.audioCtx.createAnalyser();
 			this.analyserNode.fftSize = 64;
 			this.mediaElementSource = this.audioCtx.createMediaElementSource(
 				this.audioElement,
 			);
 			this.mediaElementSource.connect(this.analyserNode);
-			this.analyserNode.connect(this.audioCtx.destination);
+			this.analyserNode.connect(mixerEngine.getMasterInput());
 		} catch (e) {
 			console.warn('[AudioPlayer] Could not init Web Audio Analyser:', e);
 		}
@@ -302,7 +299,7 @@ class AudioPlayerStore {
 				}
 
 				if (this.audioCtx && this.audioCtx.state === 'suspended') {
-					this.audioCtx.resume().catch(() => {});
+					mixerEngine.resumeContext().catch(() => {});
 				}
 
 				this.audioElement
@@ -362,7 +359,7 @@ class AudioPlayerStore {
 		if (!this.currentTrack) return;
 		if (this.audioElement?.src) {
 			if (this.audioCtx && this.audioCtx.state === 'suspended') {
-				this.audioCtx.resume().catch(() => {});
+				mixerEngine.resumeContext().catch(() => {});
 			}
 			if (this.isPlaying) {
 				this.audioElement.pause();

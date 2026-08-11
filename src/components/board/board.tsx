@@ -6,6 +6,7 @@ import '@components/board/board.scss';
 import { BoardToolbar } from '@components/board/components/BoardToolbar';
 import { CustomContextMenu } from '@components/board/components/ContextMenu';
 import { MiniPlayer } from '@components/board/components/MiniPlayer';
+import { Mixer } from '@components/board/components/Mixer';
 import { PageTabs } from '@components/board/components/PageTabs';
 import { SettingsModal } from '@components/board/components/SettingsModal';
 import {
@@ -189,7 +190,7 @@ export default function Board({
 	const handleCanvasDoubleClickCapture = useCallback((e: React.MouseEvent) => {
 		const target = e.target as HTMLElement;
 		const isInsideUi = target.closest(
-			'.page-tabs, .board-toolbar, .mini-player, .tl-ui-button, input, button',
+			'.page-tabs, .board-toolbar, .mini-player, .mixer, .tl-ui-button, input, button',
 		);
 		if (isInsideUi) return;
 
@@ -241,6 +242,7 @@ export default function Board({
 				/>
 				<MiniPlayer />
 				<BoardToolbar onOpenTrackModal={handleOpenTrackModal} />
+				<Mixer />
 			</Tldraw>
 
 			<ToastContainer />

@@ -1,3 +1,5 @@
+import { mixerStore } from '@core/audio/MixerStore';
+import type { MixerState } from '@core/model/MixerState';
 import type { BoardItem } from '@core/model/item/BoardItem';
 import { ImageItem } from '@core/model/item/ImageItem';
 import { SectionItem } from '@core/model/item/SectionItem';
@@ -52,6 +54,25 @@ export interface ProjectDataJSON {
 			loopRegion?: { start: number; end: number };
 		}>;
 	}>;
+	/** Optional mixer state for the project */
+	mixer?: {
+		master: {
+			id: string;
+			name: string;
+			volume: number;
+			pan: number;
+			isMuted: boolean;
+			isSolo: boolean;
+		};
+		channels: Array<{
+			id: string;
+			name: string;
+			volume: number;
+			pan: number;
+			isMuted: boolean;
+			isSolo: boolean;
+		}>;
+	};
 }
 
 /**
@@ -428,7 +449,12 @@ export class ProjectStorage {
 	public static async saveProjectData(project: Project): Promise<void> {
 		await ProjectStorage.saveProjectToRegistry(project);
 
-		const data = ProjectStorage.serializeProject(project);
+		let data = ProjectStorage.serializeProject(project);
+		
+		// Attach mixer state to project data
+		const mixerState = mixerStore.getState();
+		data = ProjectStorage.attachMixerState(data, mixerState);
+		
 		const jsonStr = JSON.stringify(data, null, 2);
 
 		if (DesktopBridge.isTauri() && project.path) {
@@ -473,6 +499,8 @@ export class ProjectStorage {
 			if (content) {
 				try {
 					const json = JSON.parse(content);
+					const mixerData = ProjectStorage.extractMixerState(json);
+					if (mixerData) mixerStore.loadState(mixerData);
 					return ProjectStorage.deserializeProject(json);
 				} catch (err) {
 					console.error(`[ProjectStorage] Error parsing ${filePath}:`, err);
@@ -487,6 +515,8 @@ export class ProjectStorage {
 						`[ProjectStorage] Recovered project from backup file ${bakPath}`,
 					);
 					const json = JSON.parse(bakContent);
+					const mixerData = ProjectStorage.extractMixerState(json);
+					if (mixerData) mixerStore.loadState(mixerData);
 					return ProjectStorage.deserializeProject(json);
 				} catch (bakErr) {
 					console.error(
@@ -502,6 +532,8 @@ export class ProjectStorage {
 		if (raw) {
 			try {
 				const json = JSON.parse(raw);
+				const mixerData = ProjectStorage.extractMixerState(json);
+				if (mixerData) mixerStore.loadState(mixerData);
 				return ProjectStorage.deserializeProject(json);
 			} catch (err) {
 				console.error(
@@ -518,6 +550,8 @@ export class ProjectStorage {
 					`[ProjectStorage] Recovered project ${projectId} from localStorage backup`,
 				);
 				const json = JSON.parse(bakRaw);
+				const mixerData = ProjectStorage.extractMixerState(json);
+				if (mixerData) mixerStore.loadState(mixerData);
 				return ProjectStorage.deserializeProject(json);
 			} catch (err) {
 				console.error(
@@ -528,5 +562,66 @@ export class ProjectStorage {
 		}
 
 		return null;
+	}
+	/**
+	 * Serializes mixer state into the project JSON data.
+	 * @param data Existing project data JSON.
+	 * @param mixerState Current mixer state to serialize.
+	 * @returns Updated ProjectDataJSON with mixer state.
+	 */
+	public static attachMixerState(
+		data: ProjectDataJSON,
+		mixerState: MixerState,
+	): ProjectDataJSON {
+		return {
+			...data,
+			mixer: {
+				master: {
+					id: mixerState.master.id,
+					name: mixerState.master.name,
+					volume: mixerState.master.volume,
+					pan: mixerState.master.pan,
+					isMuted: mixerState.master.isMuted,
+					isSolo: mixerState.master.isSolo,
+				},
+				channels: mixerState.channels.map((ch) => ({
+					id: ch.id,
+					name: ch.name,
+					volume: ch.volume,
+					pan: ch.pan,
+					isMuted: ch.isMuted,
+					isSolo: ch.isSolo,
+				})),
+			},
+		};
+	}
+
+	/**
+	 * Extracts mixer state from deserialized project JSON data.
+	 * @param json Project data JSON.
+	 * @returns MixerState if present, undefined otherwise.
+	 */
+	public static extractMixerState(
+		json: ProjectDataJSON,
+	): MixerState | undefined {
+		if (!json.mixer) return undefined;
+		return {
+			master: {
+				id: json.mixer.master?.id || 'master',
+				name: json.mixer.master?.name || 'Master',
+				volume: json.mixer.master?.volume ?? 1.0,
+				pan: json.mixer.master?.pan ?? 0.0,
+				isMuted: json.mixer.master?.isMuted ?? false,
+				isSolo: json.mixer.master?.isSolo ?? false,
+			},
+			channels: (json.mixer.channels || []).map((ch) => ({
+				id: ch.id,
+				name: ch.name || 'Channel',
+				volume: ch.volume ?? 1.0,
+				pan: ch.pan ?? 0.0,
+				isMuted: ch.isMuted ?? false,
+				isSolo: ch.isSolo ?? false,
+			})),
+		};
 	}
 }
