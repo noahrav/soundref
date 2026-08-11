@@ -148,10 +148,10 @@ export class ProjectService {
 				try {
 					const json = JSON.parse(content);
 					json.path = folderPath;
-					
+
 					const mixerData = ProjectStorage.extractMixerState(json);
 					if (mixerData) mixerStore.loadState(mixerData);
-					
+
 					const project = ProjectStorage.deserializeProject(json);
 					this.activeProject = project;
 					CommandManager.instance().clear();

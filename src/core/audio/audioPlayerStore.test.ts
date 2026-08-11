@@ -142,4 +142,66 @@ describe('AudioPlayerStore (P6)', () => {
 		const state = audioPlayer.getState();
 		expect(state.currentTrack?.playMode).toBe('oneshot');
 	});
+
+	it('should allow concurrent playback on different channels', async () => {
+		const trackA: PlayingTrackData = {
+			id: 'track-a',
+			shapeId: 'shape-a',
+			title: 'Track A',
+			imageUrl: '',
+			audioSource: 'songA.mp3',
+			sourceType: 'local',
+			playMode: 'oneshot',
+			channelId: 'master',
+		};
+
+		const trackB: PlayingTrackData = {
+			id: 'track-b',
+			shapeId: 'shape-b',
+			title: 'Track B',
+			imageUrl: '',
+			audioSource: 'songB.mp3',
+			sourceType: 'local',
+			playMode: 'oneshot',
+			channelId: 'ch-1',
+		};
+
+		await audioPlayer.playTrack(trackA);
+		await audioPlayer.playTrack(trackB);
+
+		expect(audioPlayer.isTrackPlaying('shape-a')).toBe(true);
+		expect(audioPlayer.isTrackPlaying('shape-b')).toBe(true);
+		expect(audioPlayer.getState().playingTracks.length).toBe(2);
+	});
+
+	it('should stop playback on the same channel when a new track is played', async () => {
+		const trackB: PlayingTrackData = {
+			id: 'track-b',
+			shapeId: 'shape-b',
+			title: 'Track B',
+			imageUrl: '',
+			audioSource: 'songB.mp3',
+			sourceType: 'local',
+			playMode: 'oneshot',
+			channelId: 'ch-1',
+		};
+
+		const trackC: PlayingTrackData = {
+			id: 'track-c',
+			shapeId: 'shape-c',
+			title: 'Track C',
+			imageUrl: '',
+			audioSource: 'songC.mp3',
+			sourceType: 'local',
+			playMode: 'oneshot',
+			channelId: 'ch-1',
+		};
+
+		await audioPlayer.playTrack(trackB);
+		expect(audioPlayer.isTrackPlaying('shape-b')).toBe(true);
+
+		await audioPlayer.playTrack(trackC);
+		expect(audioPlayer.isTrackPlaying('shape-b')).toBe(false);
+		expect(audioPlayer.isTrackPlaying('shape-c')).toBe(true);
+	});
 });

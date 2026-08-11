@@ -5,11 +5,11 @@ import {
 } from '@components/board/utils/embedUtils';
 import { toRichText } from '@components/board/utils/richText';
 import { getSectionBoundsForSelection } from '@components/board/utils/sectionUtils';
+import { audioPlayer } from '@core/audio/audioPlayerStore';
+import { mixerStore } from '@core/audio/MixerStore';
 import { DesktopBridge } from '@core/persistence/DesktopBridge';
 import { getImageDimensions } from '@core/utils/mediaUtils';
 import { formatShortcut } from '@core/utils/shortcutUtils';
-import { audioPlayer } from '@core/audio/audioPlayerStore';
-import { mixerStore } from '@core/audio/MixerStore';
 import type { IconDefinition } from '@fortawesome/free-solid-svg-icons';
 import {
 	faAngleDoubleDown,
@@ -279,13 +279,24 @@ export const CustomContextMenu = track(function CustomContextMenu({
 											{
 												id: 'route-master',
 												label: 'Master',
-												icon: (!singleSelectedShape?.props.channelId || singleSelectedShape.props.channelId === 'master') ? faCheck : undefined,
+												icon:
+													!singleSelectedShape?.props.channelId ||
+													singleSelectedShape.props.channelId === 'master'
+														? faCheck
+														: undefined,
 												onSelect: () => {
 													if (singleSelectedShape) {
 														const p = singleSelectedShape.props;
-														editor.updateShape({ id: singleSelectedShape.id, type: 'track', props: { ...p, channelId: 'master' } });
+														editor.updateShape({
+															id: singleSelectedShape.id,
+															type: 'track',
+															props: { ...p, channelId: 'master' },
+														});
 														const state = audioPlayer.getState();
-														if (state.currentTrack?.shapeId === singleSelectedShape.id) {
+														if (
+															state.currentTrack?.shapeId ===
+															singleSelectedShape.id
+														) {
 															audioPlayer.playTrack({
 																id: singleSelectedShape.id,
 																shapeId: singleSelectedShape.id,
@@ -305,13 +316,23 @@ export const CustomContextMenu = track(function CustomContextMenu({
 											...mixerStore.getState().channels.map((ch) => ({
 												id: `route-${ch.id}`,
 												label: ch.name,
-												icon: singleSelectedShape?.props.channelId === ch.id ? faCheck : undefined,
+												icon:
+													singleSelectedShape?.props.channelId === ch.id
+														? faCheck
+														: undefined,
 												onSelect: () => {
 													if (singleSelectedShape) {
 														const p = singleSelectedShape.props;
-														editor.updateShape({ id: singleSelectedShape.id, type: 'track', props: { ...p, channelId: ch.id } });
+														editor.updateShape({
+															id: singleSelectedShape.id,
+															type: 'track',
+															props: { ...p, channelId: ch.id },
+														});
 														const state = audioPlayer.getState();
-														if (state.currentTrack?.shapeId === singleSelectedShape.id) {
+														if (
+															state.currentTrack?.shapeId ===
+															singleSelectedShape.id
+														) {
 															audioPlayer.playTrack({
 																id: singleSelectedShape.id,
 																shapeId: singleSelectedShape.id,
@@ -341,9 +362,16 @@ export const CustomContextMenu = track(function CustomContextMenu({
 													const newId = mixerStore.addChannel();
 													if (singleSelectedShape) {
 														const p = singleSelectedShape.props;
-														editor.updateShape({ id: singleSelectedShape.id, type: 'track', props: { ...p, channelId: newId } });
+														editor.updateShape({
+															id: singleSelectedShape.id,
+															type: 'track',
+															props: { ...p, channelId: newId },
+														});
 														const state = audioPlayer.getState();
-														if (state.currentTrack?.shapeId === singleSelectedShape.id) {
+														if (
+															state.currentTrack?.shapeId ===
+															singleSelectedShape.id
+														) {
 															audioPlayer.playTrack({
 																id: singleSelectedShape.id,
 																shapeId: singleSelectedShape.id,
@@ -928,7 +956,16 @@ export const CustomContextMenu = track(function CustomContextMenu({
 											<div className="context-menu__submenu">
 												{item.submenu.map((sub) => {
 													if (sub.divider) {
-														return <div key={sub.id} style={{ height: 1, background: 'rgba(255,255,255,0.1)', margin: '4px 0' }} />;
+														return (
+															<div
+																key={sub.id}
+																style={{
+																	height: 1,
+																	background: 'rgba(255,255,255,0.1)',
+																	margin: '4px 0',
+																}}
+															/>
+														);
 													}
 													return (
 														<button
@@ -955,8 +992,18 @@ export const CustomContextMenu = track(function CustomContextMenu({
 																	}}
 																/>
 															) : (
-																<div style={{ width: 14, marginRight: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-																	{sub.icon && <FontAwesomeIcon icon={sub.icon} />}
+																<div
+																	style={{
+																		width: 14,
+																		marginRight: 8,
+																		display: 'flex',
+																		alignItems: 'center',
+																		justifyContent: 'center',
+																	}}
+																>
+																	{sub.icon && (
+																		<FontAwesomeIcon icon={sub.icon} />
+																	)}
 																</div>
 															)}
 															<span>{sub.label}</span>

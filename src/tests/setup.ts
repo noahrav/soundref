@@ -40,6 +40,18 @@ if (typeof globalThis.window.dispatchEvent === 'undefined') {
 	globalThis.window.dispatchEvent = vi.fn();
 }
 
+if (typeof globalThis.requestAnimationFrame === 'undefined') {
+	globalThis.requestAnimationFrame = (cb: FrameRequestCallback): number => {
+		return setTimeout(() => cb(performance.now()), 0) as unknown as number;
+	};
+}
+
+if (typeof globalThis.cancelAnimationFrame === 'undefined') {
+	globalThis.cancelAnimationFrame = (id: number): void => {
+		clearTimeout(id);
+	};
+}
+
 if (typeof globalThis.CustomEvent === 'undefined') {
 	(globalThis as unknown as { CustomEvent: unknown }).CustomEvent =
 		class CustomEvent {
@@ -103,19 +115,55 @@ if (typeof globalThis.Audio === 'undefined') {
 class MockAudioContext {
 	public state = 'suspended';
 	public destination = {};
+	public currentTime = 0;
+
+	public createGain(): unknown {
+		return {
+			gain: {
+				value: 1.0,
+				setValueAtTime: vi.fn(),
+				linearRampToValueAtTime: vi.fn(),
+				cancelScheduledValues: vi.fn(),
+			},
+			connect: vi.fn(),
+			disconnect: vi.fn(),
+		};
+	}
+
+	public createStereoPanner(): unknown {
+		return {
+			pan: {
+				value: 0,
+				setValueAtTime: vi.fn(),
+				cancelScheduledValues: vi.fn(),
+			},
+			connect: vi.fn(),
+			disconnect: vi.fn(),
+		};
+	}
+
+	public createChannelSplitter(): unknown {
+		return {
+			connect: vi.fn(),
+			disconnect: vi.fn(),
+		};
+	}
 
 	public createAnalyser(): unknown {
 		return {
 			fftSize: 64,
+			smoothingTimeConstant: 0.8,
 			frequencyBinCount: 32,
-			connect(): void {},
-			getByteFrequencyData(): void {},
+			connect: vi.fn(),
+			disconnect: vi.fn(),
+			getByteFrequencyData: vi.fn(),
 		};
 	}
 
 	public createMediaElementSource(): unknown {
 		return {
-			connect(): void {},
+			connect: vi.fn(),
+			disconnect: vi.fn(),
 		};
 	}
 

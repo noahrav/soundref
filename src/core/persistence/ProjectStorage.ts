@@ -1,11 +1,11 @@
 import { mixerStore } from '@core/audio/MixerStore';
-import type { MixerState } from '@core/model/MixerState';
 import type { BoardItem } from '@core/model/item/BoardItem';
 import { ImageItem } from '@core/model/item/ImageItem';
 import { SectionItem } from '@core/model/item/SectionItem';
 import { StickyNoteItem } from '@core/model/item/StickyNoteItem';
 import { TextItem } from '@core/model/item/TextItem';
 import { TrackItem } from '@core/model/item/TrackItem';
+import type { MixerState } from '@core/model/MixerState';
 import { Position } from '@core/model/Position';
 import { Project } from '@core/model/Project';
 import { ViewportState } from '@core/model/ViewportState';
@@ -454,11 +454,11 @@ export class ProjectStorage {
 		await ProjectStorage.saveProjectToRegistry(project);
 
 		let data = ProjectStorage.serializeProject(project);
-		
+
 		// Attach mixer state to project data
 		const mixerState = mixerStore.getState();
 		data = ProjectStorage.attachMixerState(data, mixerState);
-		
+
 		const jsonStr = JSON.stringify(data, null, 2);
 
 		if (DesktopBridge.isTauri() && project.path) {

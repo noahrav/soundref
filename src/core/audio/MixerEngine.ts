@@ -81,7 +81,8 @@ class MixerEngine {
 	 *                                      → splitter → L/R analysers (for VU meter)
 	 */
 	private initMasterBus(): void {
-		const ctx = this.audioCtx!;
+		const ctx = this.audioCtx;
+		if (!ctx) return;
 
 		// Master input - the summing point where all channels/sources connect
 		this.masterInputNode = ctx.createGain();
@@ -127,8 +128,11 @@ class MixerEngine {
 	 * This is the entry point into the mixer's audio graph.
 	 */
 	public getMasterInput(): AudioNode {
-		this.ensureContext();
-		return this.masterInputNode!;
+		const ctx = this.ensureContext();
+		if (!this.masterInputNode) {
+			this.initMasterBus();
+		}
+		return this.masterInputNode || ctx.destination;
 	}
 
 	/**
@@ -219,7 +223,7 @@ class MixerEngine {
 
 		input.connect(gain);
 		gain.connect(pan);
-		pan.connect(this.masterInputNode!);
+		pan.connect(this.getMasterInput());
 
 		pan.connect(splitter);
 		splitter.connect(analyserL, 0);
@@ -376,9 +380,7 @@ class MixerEngine {
 			return { left: 0, right: 0 };
 		}
 
-		const leftData = new Uint8Array(
-			this.masterAnalyserLeft.frequencyBinCount,
-		);
+		const leftData = new Uint8Array(this.masterAnalyserLeft.frequencyBinCount);
 		const rightData = new Uint8Array(
 			this.masterAnalyserRight.frequencyBinCount,
 		);
@@ -408,9 +410,7 @@ class MixerEngine {
 	 */
 	public getMasterFrequencyData(): Uint8Array {
 		if (!this.masterAnalyserNode) return new Uint8Array(0);
-		const data = new Uint8Array(
-			this.masterAnalyserNode.frequencyBinCount,
-		);
+		const data = new Uint8Array(this.masterAnalyserNode.frequencyBinCount);
 		this.masterAnalyserNode.getByteFrequencyData(data);
 		return data;
 	}

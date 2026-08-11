@@ -1,9 +1,9 @@
+import { mixerEngine } from '@core/audio/MixerEngine';
 import type { LoopRegion } from '@core/model/item/TrackItem';
 import { DesktopBridge } from '@core/persistence/DesktopBridge';
 import { getBlobUrlForFile, getLocalMediaUrl } from '@core/utils/mediaUtils';
 import { getOrExtractWaveformPeaks } from '@core/utils/WaveformService';
 import { notify } from '@services/NotificationService';
-import { mixerEngine } from '@core/audio/MixerEngine';
 
 /**
  * Interface representing the data structure for a track currently playing or loaded in the audio player.
@@ -54,7 +54,7 @@ class AudioPlayerStore {
 
 	private channels: Map<string, ChannelPlayback> = new Map();
 	private lastActiveTrack: PlayingTrackData | null = null;
-	
+
 	private listeners: Set<AudioPlayerListener> = new Set();
 	private audioPeaksMap: Map<string, number[]> = new Map();
 
@@ -75,60 +75,70 @@ class AudioPlayerStore {
 	}
 
 	private notify(): void {
-		this.listeners.forEach((l) => l());
+		this.listeners.forEach((l) => {
+			l();
+		});
 	}
-	
+
 	private getOrCreateChannel(channelId: string): ChannelPlayback {
-		if (this.channels.has(channelId)) {
-			return this.channels.get(channelId)!;
+		const existing = this.channels.get(channelId);
+		if (existing) {
+			return existing;
 		}
-		
+
 		const audioElement = new Audio();
 		audioElement.crossOrigin = 'anonymous';
-		
+
 		const channel: ChannelPlayback = {
 			audioElement,
 			mediaSource: null,
 			currentTrack: null,
 			isPlaying: false,
 			currentTime: 0,
-			duration: 0
+			duration: 0,
 		};
-		
+
 		this.channels.set(channelId, channel);
-		
+
 		let lastNotifyTime = 0;
 		audioElement.addEventListener('timeupdate', () => {
 			channel.currentTime = audioElement.currentTime;
-			
+
 			if (channel.currentTrack?.playMode === 'loop') {
 				const start = channel.currentTrack.loopRegion?.start ?? 0;
-				const end = channel.currentTrack.loopRegion?.end && channel.currentTrack.loopRegion.end > start
-					? channel.currentTrack.loopRegion.end : channel.duration;
-					
+				const end =
+					channel.currentTrack.loopRegion?.end &&
+					channel.currentTrack.loopRegion.end > start
+						? channel.currentTrack.loopRegion.end
+						: channel.duration;
+
 				if (end > start && channel.currentTime >= end) {
 					audioElement.currentTime = start;
 				}
 			}
-			
+
 			const now = Date.now();
 			if (now - lastNotifyTime > 250) {
 				lastNotifyTime = now;
 				this.notify();
 			}
 		});
-		
+
 		audioElement.addEventListener('loadedmetadata', () => {
 			channel.duration = audioElement.duration || 0;
 			const start = channel.currentTrack?.loopRegion?.start ?? 0;
-			if (channel.currentTrack?.playMode === 'loop' && start > 0 && start < channel.duration) {
+			if (
+				channel.currentTrack?.playMode === 'loop' &&
+				start > 0 &&
+				start < channel.duration
+			) {
 				try {
 					audioElement.currentTime = start;
-				} catch(e) {}
+				} catch (_e) {}
 			}
 			this.notify();
 		});
-		
+
 		audioElement.addEventListener('ended', () => {
 			if (channel.currentTrack?.playMode === 'loop') {
 				const start = channel.currentTrack.loopRegion?.start ?? 0;
@@ -139,44 +149,54 @@ class AudioPlayerStore {
 				this.notify();
 			}
 		});
-		
+
 		audioElement.addEventListener('play', () => {
 			channel.isPlaying = true;
 			this.initAudioContext(channelId, channel);
 			this.notify();
 		});
-		
+
 		audioElement.addEventListener('pause', () => {
 			channel.isPlaying = false;
 			this.notify();
 		});
-		
+
 		audioElement.addEventListener('error', async () => {
-			if (channel.currentTrack?.sourceType === 'local' && channel.currentTrack.audioSource) {
+			if (
+				channel.currentTrack?.sourceType === 'local' &&
+				channel.currentTrack.audioSource
+			) {
 				const currentSrc = audioElement.src || '';
 				if (!currentSrc.startsWith('blob:') && DesktopBridge.isTauri()) {
-					const blobUrl = await getBlobUrlForFile(channel.currentTrack.audioSource);
+					const blobUrl = await getBlobUrlForFile(
+						channel.currentTrack.audioSource,
+					);
 					if (blobUrl) {
 						audioElement.src = blobUrl;
 						audioElement.load();
-						audioElement.play().then(() => {
-							channel.isPlaying = true;
-							this.notify();
-						}).catch(() => {
-							channel.isPlaying = false;
-							this.notify();
-						});
+						audioElement
+							.play()
+							.then(() => {
+								channel.isPlaying = true;
+								this.notify();
+							})
+							.catch(() => {
+								channel.isPlaying = false;
+								this.notify();
+							});
 						return;
 					}
 				}
 			}
 			if (channel.currentTrack?.title) {
-				notify.error(`Could not play audio track "${channel.currentTrack.title}"`);
+				notify.error(
+					`Could not play audio track "${channel.currentTrack.title}"`,
+				);
 			}
 			channel.isPlaying = false;
 			this.notify();
 		});
-		
+
 		return channel;
 	}
 
@@ -184,11 +204,13 @@ class AudioPlayerStore {
 		try {
 			const ctx = mixerEngine.ensureContext();
 			if (!channel.mediaSource) {
-				channel.mediaSource = ctx.createMediaElementSource(channel.audioElement);
+				channel.mediaSource = ctx.createMediaElementSource(
+					channel.audioElement,
+				);
 			}
 			try {
 				channel.mediaSource.disconnect();
-			} catch (e) {}
+			} catch (_e) {}
 
 			const targetInput = mixerEngine.getChannelInput(channelId);
 			channel.mediaSource.connect(targetInput);
@@ -204,7 +226,7 @@ class AudioPlayerStore {
 				playingTracks.push(ch.currentTrack);
 			}
 		}
-		
+
 		let isPlaying = false;
 		let currentTime = 0;
 		let duration = 0;
@@ -218,13 +240,13 @@ class AudioPlayerStore {
 				duration = channel.duration;
 			}
 		}
-		
+
 		return {
 			currentTrack: this.lastActiveTrack,
 			playingTracks,
 			isPlaying,
 			currentTime,
-			duration
+			duration,
 		};
 	}
 
@@ -242,7 +264,7 @@ class AudioPlayerStore {
 		}
 
 		const channel = this.getOrCreateChannel(channelId);
-		
+
 		if (channel.currentTrack?.id === track.id) {
 			if (channel.audioElement.src) {
 				const ctx = mixerEngine.getAudioContext();
@@ -266,20 +288,39 @@ class AudioPlayerStore {
 			channel.audioElement.pause();
 			channel.audioElement.currentTime = 0;
 		}
-		
-		channel.currentTrack = track.sourceType === 'stream' ? { ...track, playMode: 'oneshot' } : track;
+
+		const normalizedTrack =
+			track.sourceType === 'stream'
+				? { ...track, playMode: 'oneshot' as const }
+				: track;
+		channel.currentTrack = normalizedTrack;
 		channel.currentTime = 0;
-		this.lastActiveTrack = track;
+		this.lastActiveTrack = normalizedTrack;
 
 		if (channel.audioElement && track.audioSource) {
-			let src = track.sourceType === 'local' ? getLocalMediaUrl(track.audioSource) : track.audioSource;
+			let src =
+				track.sourceType === 'local'
+					? getLocalMediaUrl(track.audioSource)
+					: track.audioSource;
 
-			if (track.sourceType === 'local' && !DesktopBridge.isTauri() && !src.startsWith('http://') && !src.startsWith('https://') && !src.startsWith('blob:') && !src.startsWith('data:')) {
+			if (
+				track.sourceType === 'local' &&
+				!DesktopBridge.isTauri() &&
+				!src.startsWith('http://') &&
+				!src.startsWith('https://') &&
+				!src.startsWith('blob:') &&
+				!src.startsWith('data:')
+			) {
 				const blobUrl = await getBlobUrlForFile(track.audioSource);
 				if (blobUrl) src = blobUrl;
 			}
 
-			const isDirectPlayable = track.sourceType === 'local' || src.startsWith('http://') || src.startsWith('https://') || src.startsWith('blob:') || src.startsWith('data:');
+			const isDirectPlayable =
+				track.sourceType === 'local' ||
+				src.startsWith('http://') ||
+				src.startsWith('https://') ||
+				src.startsWith('blob:') ||
+				src.startsWith('data:');
 
 			if (isDirectPlayable) {
 				if (channel.audioElement.src !== src) {
@@ -292,26 +333,33 @@ class AudioPlayerStore {
 					mixerEngine.resumeContext().catch(() => {});
 				}
 
-				channel.audioElement.play().then(() => {
-					channel.isPlaying = true;
-					this.notify();
-				}).catch(async () => {
-					if (track.sourceType === 'local' && DesktopBridge.isTauri() && !src.startsWith('blob:')) {
-						const blobUrl = await getBlobUrlForFile(track.audioSource);
-						if (blobUrl) {
-							channel.audioElement.src = blobUrl;
-							channel.audioElement.load();
-							try {
-								await channel.audioElement.play();
-								channel.isPlaying = true;
-								this.notify();
-								return;
-							} catch (fallbackErr) {}
+				channel.audioElement
+					.play()
+					.then(() => {
+						channel.isPlaying = true;
+						this.notify();
+					})
+					.catch(async () => {
+						if (
+							track.sourceType === 'local' &&
+							DesktopBridge.isTauri() &&
+							!src.startsWith('blob:')
+						) {
+							const blobUrl = await getBlobUrlForFile(track.audioSource);
+							if (blobUrl) {
+								channel.audioElement.src = blobUrl;
+								channel.audioElement.load();
+								try {
+									await channel.audioElement.play();
+									channel.isPlaying = true;
+									this.notify();
+									return;
+								} catch (_fallbackErr) {}
+							}
 						}
-					}
-					channel.isPlaying = true;
-					this.notify();
-				});
+						channel.isPlaying = true;
+						this.notify();
+					});
 
 				if (track.sourceType === 'local') {
 					this.extractWaveformPeaks(track.id, track.audioSource, src);
@@ -325,7 +373,7 @@ class AudioPlayerStore {
 			this.notify();
 		}
 	}
-	
+
 	public stop(): void {
 		for (const ch of this.channels.values()) {
 			if (ch.audioElement) {
@@ -346,7 +394,7 @@ class AudioPlayerStore {
 		if (!this.lastActiveTrack) return;
 		const channelId = this.lastActiveTrack.channelId || 'master';
 		const channel = this.channels.get(channelId);
-		if (channel && channel.audioElement?.src) {
+		if (channel?.audioElement?.src) {
 			const ctx = mixerEngine.getAudioContext();
 			if (ctx && ctx.state === 'suspended') {
 				mixerEngine.resumeContext().catch(() => {});
@@ -363,7 +411,7 @@ class AudioPlayerStore {
 		if (!this.lastActiveTrack) return;
 		const channelId = this.lastActiveTrack.channelId || 'master';
 		const channel = this.channels.get(channelId);
-		if (channel && channel.audioElement) {
+		if (channel?.audioElement) {
 			channel.audioElement.currentTime = time;
 			channel.currentTime = time;
 			this.notify();
@@ -391,12 +439,16 @@ class AudioPlayerStore {
 	public getRealtimeFrequencyData(channelId?: string): Uint8Array {
 		return mixerEngine.getChannelFrequencyData(channelId || 'master');
 	}
-	
+
 	public getPeaks(trackId: string): number[] | undefined {
 		return this.audioPeaksMap.get(trackId);
 	}
-	
-	private extractWaveformPeaks(trackId: string, path: string, src: string): void {
+
+	private extractWaveformPeaks(
+		trackId: string,
+		path: string,
+		src: string,
+	): void {
 		if (this.audioPeaksMap.has(trackId)) return;
 		getOrExtractWaveformPeaks(trackId, src, path, 100).then((peaks) => {
 			this.audioPeaksMap.set(trackId, peaks);

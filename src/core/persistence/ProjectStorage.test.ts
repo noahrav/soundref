@@ -366,5 +366,61 @@ describe('ProjectStorage', () => {
 			projects = await ProjectStorage.getKnownProjects();
 			expect(projects).toHaveLength(0);
 		});
+
+		it('should attach and extract mixer state and track channelId', () => {
+			const project = new Project('Mixer Test Project', '/path', 'p-mixer');
+			const ws = new Workspace('Main');
+			const track = new TrackItem(
+				new Position(0, 0),
+				'Guitar',
+				'',
+				'guitar.mp3',
+				'local',
+				'oneshot',
+				{ start: 0, end: 0 },
+				't-1',
+				1,
+				200,
+				'ch-guitar',
+			);
+			ws.addBoardItem(track);
+			project.addWorkspace(ws);
+
+			let json = ProjectStorage.serializeProject(project);
+			expect((json.workspaces[0].items[0] as any).channelId).toBe('ch-guitar');
+
+			json = ProjectStorage.attachMixerState(json, {
+				master: {
+					id: 'master',
+					name: 'Master',
+					volume: 0.8,
+					pan: 0,
+					isMuted: false,
+					isSolo: false,
+				},
+				channels: [
+					{
+						id: 'ch-guitar',
+						name: 'Guitar Channel',
+						volume: 1.2,
+						pan: -0.2,
+						isMuted: false,
+						isSolo: true,
+					},
+				],
+			});
+
+			const extractedMixer = ProjectStorage.extractMixerState(json);
+			expect(extractedMixer).toBeDefined();
+			expect(extractedMixer?.master.volume).toBe(0.8);
+			expect(extractedMixer?.channels.length).toBe(1);
+			expect(extractedMixer?.channels[0].name).toBe('Guitar Channel');
+
+			const restoredProject = ProjectStorage.deserializeProject(json);
+			const restoredTrack = restoredProject.workspaces
+				.get(ws.id)
+				?.items.get('t-1') as TrackItem;
+			expect(restoredTrack.channelId).toBe('ch-guitar');
+		});
 	});
 });

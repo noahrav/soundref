@@ -1,5 +1,6 @@
 import type { TLTrackShape } from '@components/board/config/TrackShapeUtil';
 import { audioPlayer } from '@core/audio/audioPlayerStore';
+import { mixerStore } from '@core/audio/MixerStore';
 import { useMediaUrl } from '@core/utils/mediaUtils';
 import {
 	faMusic,
@@ -10,7 +11,6 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { HTMLContainer, useEditor } from 'tldraw';
-import { mixerStore } from '@core/audio/MixerStore';
 
 /**
  * Renders an animated HTML canvas spectrogram overlay when audio playback is active.
@@ -151,9 +151,9 @@ export function TrackCardComponent({ shape }: { shape: TLTrackShape }) {
 		h,
 	} = shape.props;
 	const resolvedImageUrl = useMediaUrl(imageUrl);
-	
+
 	const [channels, setChannels] = useState(mixerStore.getState().channels);
-	
+
 	useEffect(() => {
 		const unsub = mixerStore.subscribe(() => {
 			setChannels(mixerStore.getState().channels);
@@ -226,7 +226,11 @@ export function TrackCardComponent({ shape }: { shape: TLTrackShape }) {
 				nextChannel = channels[idx + 1].id;
 			}
 		}
-		editor.updateShape({ id: shape.id, type: 'track', props: { channelId: nextChannel } });
+		editor.updateShape({
+			id: shape.id,
+			type: 'track',
+			props: { channelId: nextChannel },
+		});
 
 		const state = audioPlayer.getState();
 		if (state.currentTrack?.shapeId === shape.id) {
@@ -248,7 +252,7 @@ export function TrackCardComponent({ shape }: { shape: TLTrackShape }) {
 	let badgeLabel = 'Master';
 	if (channelId && channelId !== 'master') {
 		const ch = channels.find((c) => c.id === channelId);
-		badgeLabel = ch ? (ch.name.replace('Channel', 'Ch').trim()) : 'Master';
+		badgeLabel = ch ? ch.name.replace('Channel', 'Ch').trim() : 'Master';
 	}
 
 	const size = Math.min(w, h);
@@ -351,6 +355,7 @@ export function TrackCardComponent({ shape }: { shape: TLTrackShape }) {
 				</button>
 
 				{/* Channel Badge */}
+				{/* biome-ignore lint/a11y/useKeyWithMouseEvents: badge hover style */}
 				<button
 					type="button"
 					onPointerDown={(e) => e.stopPropagation()}
@@ -373,8 +378,12 @@ export function TrackCardComponent({ shape }: { shape: TLTrackShape }) {
 						transition: 'background 0.12s ease',
 					}}
 					title="Click to cycle routing channel"
-					onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.2)')}
-					onMouseOut={(e) => (e.currentTarget.style.background = 'rgba(17, 17, 17, 0.85)')}
+					onMouseOver={(e) =>
+						(e.currentTarget.style.background = 'rgba(255,255,255,0.2)')
+					}
+					onMouseOut={(e) =>
+						(e.currentTarget.style.background = 'rgba(17, 17, 17, 0.85)')
+					}
 				>
 					{badgeLabel}
 				</button>

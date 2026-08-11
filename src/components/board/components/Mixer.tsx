@@ -19,7 +19,7 @@ import './Mixer.scss';
 
 // Time formatter
 const formatTime = (timeInSeconds: number) => {
-	if (!isFinite(timeInSeconds)) return '0:00';
+	if (!Number.isFinite(timeInSeconds)) return '0:00';
 	const m = Math.floor(timeInSeconds / 60);
 	const s = Math.floor(timeInSeconds % 60);
 	return `${m}:${s < 10 ? '0' : ''}${s}`;
@@ -125,6 +125,9 @@ const VerticalFader = ({
 	return (
 		<div
 			className="vertical-fader"
+			role="slider"
+			tabIndex={0}
+			aria-valuenow={value}
 			ref={trackRef}
 			onPointerDown={handlePointerDown}
 			onPointerMove={handlePointerMove}
@@ -220,6 +223,9 @@ const PanSlider = ({ value, onChange }: PanSliderProps) => {
 	return (
 		<div
 			className="pan-slider"
+			role="slider"
+			tabIndex={0}
+			aria-valuenow={value}
 			ref={trackRef}
 			onPointerDown={handlePointerDown}
 			onPointerMove={handlePointerMove}
@@ -252,10 +258,7 @@ const SeekSlider = ({ currentTime, duration, onSeek }: SeekSliderProps) => {
 
 	useEffect(() => {
 		if (isDraggingRef.current || !duration) return;
-		const percent = Math.max(
-			0,
-			Math.min(100, (currentTime / duration) * 100),
-		);
+		const percent = Math.max(0, Math.min(100, (currentTime / duration) * 100));
 		if (fillRef.current) fillRef.current.style.width = `${percent}%`;
 		if (thumbRef.current)
 			thumbRef.current.style.left = `calc(${percent}% - 6px)`;
@@ -365,11 +368,17 @@ export const ChannelStrip = ({
 		channelState.volume === 0 ? t('mixer.infDb') : `${channelDb.toFixed(1)} dB`;
 
 	return (
-		<div className={`mixer__channel-strip ${isMaster ? 'mixer__channel-strip--master' : ''}`}>
+		<div
+			className={`mixer__channel-strip ${isMaster ? 'mixer__channel-strip--master' : ''}`}
+		>
 			<div className="mixer__channel-header">
 				<span>{isMaster ? t('mixer.master') : channelState.name}</span>
 				{!isMaster && onDelete && (
-					<button className="mixer__btn-delete-channel" onClick={onDelete}>
+					<button
+						type="button"
+						className="mixer__btn-delete-channel"
+						onClick={onDelete}
+					>
 						&times;
 					</button>
 				)}
@@ -456,7 +465,10 @@ export const Mixer = () => {
 	const coverUrl = useMediaUrl(currentTrack?.imageUrl);
 
 	const vuRefs = useRef<
-		Record<string, { left: HTMLDivElement | null; right: HTMLDivElement | null }>
+		Record<
+			string,
+			{ left: HTMLDivElement | null; right: HTMLDivElement | null }
+		>
 	>({});
 	const rafRef = useRef<number>(0);
 	const levelRefs = useRef<Record<string, { left: number; right: number }>>({});
@@ -482,7 +494,10 @@ export const Mixer = () => {
 			const attack = 0.95;
 			const decay = 0.85;
 
-			const updateChannelVU = (id: string, rawLevels: { left: number; right: number }) => {
+			const updateChannelVU = (
+				id: string,
+				rawLevels: { left: number; right: number },
+			) => {
 				if (!levelRefs.current[id]) {
 					levelRefs.current[id] = { left: 0, right: 0 };
 				}
@@ -686,14 +701,14 @@ export const Mixer = () => {
 								onMuteToggle={() => mixerStore.toggleMasterMute()}
 								onSoloToggle={() => mixerStore.toggleMasterSolo()}
 								vuLeftRef={(el) => {
-									if (!vuRefs.current['master'])
-										vuRefs.current['master'] = { left: null, right: null };
-									vuRefs.current['master'].left = el;
+									if (!vuRefs.current.master)
+										vuRefs.current.master = { left: null, right: null };
+									vuRefs.current.master.left = el;
 								}}
 								vuRightRef={(el) => {
-									if (!vuRefs.current['master'])
-										vuRefs.current['master'] = { left: null, right: null };
-									vuRefs.current['master'].right = el;
+									if (!vuRefs.current.master)
+										vuRefs.current.master = { left: null, right: null };
+									vuRefs.current.master.right = el;
 								}}
 							/>
 
