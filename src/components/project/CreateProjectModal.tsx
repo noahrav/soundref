@@ -3,7 +3,7 @@ import { DesktopBridge } from '@core/persistence/DesktopBridge';
 import { faFolderOpen, faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { ProjectService } from '@services/ProjectService';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import '@components/project/CreateProjectModal.scss';
 
@@ -16,7 +16,7 @@ interface CreateProjectModalProps {
 function combinePathAndName(baseDir: string, name: string): string {
 	const cleanBase = baseDir.trim().replace(/[/\\]+$/, '');
 	const cleanName = name.trim();
-	if (!cleanBase) return cleanName ? `~/${cleanName}` : '~/';
+	if (!cleanBase) return cleanName;
 	if (!cleanName) return cleanBase;
 	return `${cleanBase}/${cleanName}`;
 }
@@ -30,9 +30,21 @@ export function CreateProjectModal({
 	const service = ProjectService.instance();
 
 	const [newProjectName, setNewProjectName] = useState('');
-	const [baseParentPath, setBaseParentPath] = useState('~/');
-	const [newProjectPath, setNewProjectPath] = useState('~/');
+	const [baseParentPath, setBaseParentPath] = useState('');
+	const [newProjectPath, setNewProjectPath] = useState('');
 	const [isCreating, setIsCreating] = useState(false);
+
+	// Resolve the real home directory path on mount
+	useEffect(() => {
+		if (!isOpen) return;
+		void DesktopBridge.getHomeDir().then((homeDir) => {
+			if (homeDir) {
+				setBaseParentPath(homeDir);
+				setNewProjectPath(combinePathAndName(homeDir, newProjectName));
+			}
+		});
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [isOpen]);
 
 	const handleNameChange = (name: string) => {
 		setNewProjectName(name);
@@ -150,7 +162,7 @@ export function CreateProjectModal({
 						<button
 							type="submit"
 							className="btn-submit"
-							disabled={isCreating || !newProjectName.trim()}
+							disabled={isCreating || !newProjectName.trim() || !newProjectPath.trim()}
 						>
 							{isCreating
 								? t('projectSelector.creating')

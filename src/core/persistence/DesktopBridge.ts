@@ -224,6 +224,22 @@ export class DesktopBridge {
 	}
 
 	/**
+	 * Gets the user's home directory path from the native OS.
+	 * @returns Promise resolving to home directory path string or null.
+	 */
+	public static async getHomeDir(): Promise<string | null> {
+		if (DesktopBridge.isTauri()) {
+			try {
+				return await invoke<string>('get_home_dir');
+			} catch (err) {
+				console.error('[DesktopBridge] get_home_dir error:', err);
+				return null;
+			}
+		}
+		return null;
+	}
+
+	/**
 	 * Opens specified desktop folder in native file explorer.
 	 * @param path Directory path to open.
 	 */

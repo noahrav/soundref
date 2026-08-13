@@ -59,7 +59,8 @@
 		"imageItem": "Image",
 		"groupItem": "Section",
 		"addPage": "Ajouter une page",
-		"closePage": "Fermer {{name}}"
+		"closePage": "Fermer {{name}}",
+		"deleteProject": "Supprimer le projet de la liste"
 	},
 	"contextMenu": {
 		"cut": "Couper",

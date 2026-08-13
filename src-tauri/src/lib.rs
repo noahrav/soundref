@@ -73,6 +73,13 @@ fn file_exists(path: String) -> bool {
 }
 
 #[tauri::command]
+fn get_home_dir() -> Result<String, String> {
+    std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .map_err(|_| "Could not determine home directory".to_string())
+}
+
+#[tauri::command]
 fn get_projects_registry_path(app: tauri::AppHandle) -> Result<String, String> {
     let path = app.path().app_config_dir().map_err(|e| e.to_string())?;
     let file = path.join("projects.json");
@@ -236,6 +243,7 @@ pub fn run() {
             write_text_file,
             create_dir,
             file_exists,
+            get_home_dir,
             get_projects_registry_path,
             open_folder,
             copy_file,

@@ -18,6 +18,8 @@ interface PageTabsProps {
 	onOpenCreateProjectModal?: () => void;
 	/** Callback function to open settings modal */
 	onOpenSettingsModal?: () => void;
+	/** Callback function invoked after deleting the current project from the list */
+	onDeleteCurrentProject?: () => void;
 }
 
 /**
@@ -29,6 +31,7 @@ export const PageTabs = track(function PageTabs({
 	onBackToProjects,
 	onOpenCreateProjectModal,
 	onOpenSettingsModal,
+	onDeleteCurrentProject,
 }: PageTabsProps) {
 	const { t } = useTranslation();
 	const editor = useEditor();
@@ -150,6 +153,7 @@ export const PageTabs = track(function PageTabs({
 						onBackToProjects={onBackToProjects}
 						onOpenCreateProjectModal={onOpenCreateProjectModal}
 						onOpenSettingsModal={onOpenSettingsModal}
+						onDeleteCurrentProject={onDeleteCurrentProject}
 					/>
 				)}
 			</div>

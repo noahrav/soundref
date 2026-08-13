@@ -239,6 +239,7 @@ export default function Board({
 					onBackToProjects={onBackToProjects}
 					onOpenCreateProjectModal={() => setIsCreateProjectModalOpen(true)}
 					onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
+					onDeleteCurrentProject={onBackToProjects}
 				/>
 				<MiniPlayer />
 				<BoardToolbar onOpenTrackModal={handleOpenTrackModal} />
