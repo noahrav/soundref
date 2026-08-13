@@ -12,6 +12,10 @@ concurrency:
 jobs:
   quality-check:
     name: Code quality, tests & build
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write1
     runs-on: ubuntu-22.04
 
     steps:

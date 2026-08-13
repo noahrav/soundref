@@ -13,6 +13,10 @@ concurrency:
 jobs:
   test-and-check:
     name: Verify quality and tests before release
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
     runs-on: ubuntu-22.04
 
     steps:
@@ -63,6 +67,8 @@ jobs:
     needs: test-and-check
     permissions:
       contents: write
+      artifact-metadata: write
+      checks: write
     strategy:
       fail-fast: false
       matrix:
