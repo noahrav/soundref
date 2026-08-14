@@ -1,7 +1,7 @@
 {
 	"projectSelector": {
 		"title": "SoundRef",
-		"subtitle": "Select an existing project or create a new one stored on your local disk.",
+		"subtitle": "Select an existing project or create a new one.",
 		"searchPlaceholder": "Search project...",
 		"openFolder": "Open folder",
 		"openFolderTitle": "Open existing project directory",
@@ -144,7 +144,16 @@
 		"converting": "Converting files...",
 		"convertSuccess_zero": "All files have already been converted.",
 		"convertSuccess_one": "Successfully converted {{count}} file!",
-		"convertSuccess_other": "Successfully converted {{count}} files!"
+		"convertSuccess_other": "Successfully converted {{count}} files!",
+		"cacheTitle": "Cache & Memory Management",
+		"cacheDesc": "Manage temporary memory (RAM) used for audio/image buffering and waveform calculations.",
+		"cacheStats": "{{blobs}} media in RAM, {{waveforms}} cached waveform(s)",
+		"cacheEmpty": "Cache is empty (no items in memory).",
+		"clearCacheBtn": "Clear cache",
+		"clearingCache": "Clearing cache...",
+		"clearCacheSuccess": "Cache successfully cleared ({{count}} item(s) freed).",
+		"autoClearCacheTitle": "Auto-clear on project switch",
+		"autoClearCacheDesc": "Automatically frees RAM and audio buffers whenever a different project is loaded."
 	},
 	"mixer": {
 		"title": "Mixer",

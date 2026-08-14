@@ -1,7 +1,7 @@
 {
 	"projectSelector": {
 		"title": "SoundRef",
-		"subtitle": "Sélectionnez un projet existant ou créez-en un nouveau stocké sur votre disque local.",
+		"subtitle": "Sélectionnez un projet existant ou créez-en un nouveau.",
 		"searchPlaceholder": "Rechercher un projet...",
 		"openFolder": "Ouvrir un dossier",
 		"openFolderTitle": "Ouvrir un répertoire de projet existant",
@@ -144,7 +144,16 @@
 		"converting": "Conversion en cours...",
 		"convertSuccess_zero": "Tous les fichiers ont déjà été convertis.",
 		"convertSuccess_one": "{{count}} fichier converti avec succès !",
-		"convertSuccess_other": "{{count}} fichiers convertis avec succès !"
+		"convertSuccess_other": "{{count}} fichiers convertis avec succès !",
+		"cacheTitle": "Gestion du cache et de la mémoire",
+		"cacheDesc": "Gérez la mémoire temporaire (RAM) utilisée pour la mise en mémoire tampon des audios/images et le calcul des formes d'ondes.",
+		"cacheStats": "{{blobs}} média(s) en RAM, {{waveforms}} forme(s) d'onde en cache",
+		"cacheEmpty": "Le cache est vide (aucun élément en mémoire).",
+		"clearCacheBtn": "Vider le cache",
+		"clearingCache": "Nettoyage en cours...",
+		"clearCacheSuccess": "Cache vidé avec succès ({{count}} élément(s) libéré(s)).",
+		"autoClearCacheTitle": "Vider automatiquement au changement de projet",
+		"autoClearCacheDesc": "Libère automatiquement la mémoire RAM et les tampons lors du chargement d'un autre projet."
 	},
 	"mixer": {
 		"title": "Mixeur",

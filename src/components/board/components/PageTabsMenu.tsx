@@ -98,10 +98,7 @@ export function PageTabsMenu({
 				await service.deleteProject(activeProject.id);
 				onDeleteCurrentProject?.();
 			} catch (err) {
-				console.error(
-					'[PageTabsMenu] Failed to delete current project:',
-					err,
-				);
+				console.error('[PageTabsMenu] Failed to delete current project:', err);
 			}
 		}
 	}, [service, t, onDeleteCurrentProject]);
