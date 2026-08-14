@@ -41,13 +41,20 @@ function SpectrogramOverlay({
 
 		let animId: number;
 		let lastFrameTime = 0;
-		const barCount = 24;
-		const freqs = Array.from({ length: barCount }, () => 0.1);
+		const barCount = 22;
+		const freqs = Array.from({ length: barCount }, () => 0.15);
+		const bottomOffset = Math.max(26, height * 0.16);
+		const maxBarHeight = height * 0.5;
 
-		const gradient = ctx.createLinearGradient(0, height, 0, 0);
-		gradient.addColorStop(0, 'rgba(255, 255, 255, 0.35)');
-		gradient.addColorStop(0.6, 'rgba(255, 255, 255, 0.75)');
-		gradient.addColorStop(1, 'rgba(255, 255, 255, 0.95)');
+		const gradient = ctx.createLinearGradient(
+			0,
+			height - bottomOffset,
+			0,
+			height - bottomOffset - maxBarHeight,
+		);
+		gradient.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+		gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.85)');
+		gradient.addColorStop(1, 'rgba(255, 255, 255, 1.0)');
 
 		const render = (time: number) => {
 			animId = requestAnimationFrame(render);
@@ -61,37 +68,42 @@ function SpectrogramOverlay({
 
 			const gap = 3;
 			const totalGaps = (barCount - 1) * gap;
-			const barWidth = Math.max(2, (width - totalGaps) / barCount);
-
-			ctx.fillStyle = gradient;
+			const barWidth = Math.max(3, (width - totalGaps - 16) / barCount);
+			const startXOffset = 8;
 
 			for (let i = 0; i < barCount; i++) {
 				let norm = 0;
 				if (hasRealData && rawData.length > 0) {
-					const dataIdx = Math.floor((i / barCount) * rawData.length);
-					norm = rawData[dataIdx] / 255;
+					// Logarithmic scale across musical frequency bands (Sub, Bass, Low-Mid, Mid, High, Treble)
+					const logRatio = (i / (barCount - 1)) ** 1.7;
+					const dataIdx = Math.min(
+						rawData.length - 1,
+						Math.floor(1 + logRatio * (Math.min(rawData.length, 75) - 1)),
+					);
+					norm = Math.min(1.0, (rawData[dataIdx] / 255) * 1.3);
 				} else {
 					const timeSec = time / 1000;
-					norm = Math.max(
-						0.08,
-						Math.abs(Math.cos(timeSec * 2 + i * 0.35)) * 0.6,
-					);
+					const wave1 = Math.sin(timeSec * 3.2 + i * 0.45);
+					const wave2 = Math.cos(timeSec * 5.1 + i * 0.75);
+					norm = Math.max(0.12, Math.abs(wave1) * 0.6 + Math.abs(wave2) * 0.4);
 				}
 
-				freqs[i] += (norm - freqs[i]) * 0.4;
+				freqs[i] += (norm - freqs[i]) * 0.45;
 
-				const barHeight = Math.max(4, freqs[i] * (height * 0.75));
-				const x = i * (barWidth + gap);
-				const y = height - barHeight;
+				const barHeight = Math.max(4, freqs[i] * maxBarHeight);
+				const x = startXOffset + i * (barWidth + gap);
+				const y = height - bottomOffset - barHeight;
 
+				// Dark drop shadow behind each bar for contrast on light covers
+				ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+				ctx.fillRect(x - 1, y - 1, barWidth + 2, barHeight + 2);
+
+				// Gradient bar
+				ctx.fillStyle = gradient;
 				ctx.fillRect(x, y, barWidth, barHeight);
-			}
 
-			ctx.fillStyle = '#ffffff';
-			for (let i = 0; i < barCount; i++) {
-				const barHeight = Math.max(4, freqs[i] * (height * 0.75));
-				const x = i * (barWidth + gap);
-				const y = height - barHeight;
+				// Top cap
+				ctx.fillStyle = '#ffffff';
 				ctx.fillRect(x, Math.max(0, y - 2), barWidth, 2);
 			}
 		};
@@ -114,7 +126,7 @@ function SpectrogramOverlay({
 				position: 'absolute',
 				inset: 0,
 				pointerEvents: 'none',
-				zIndex: 3,
+				zIndex: 4,
 			}}
 		/>
 	);

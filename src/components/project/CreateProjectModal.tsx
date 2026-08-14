@@ -37,13 +37,13 @@ export function CreateProjectModal({
 	// Resolve the real home directory path on mount
 	useEffect(() => {
 		if (!isOpen) return;
+		setNewProjectName('');
 		void DesktopBridge.getHomeDir().then((homeDir) => {
 			if (homeDir) {
 				setBaseParentPath(homeDir);
-				setNewProjectPath(combinePathAndName(homeDir, newProjectName));
+				setNewProjectPath(combinePathAndName(homeDir, ''));
 			}
 		});
-	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [isOpen]);
 
 	const handleNameChange = (name: string) => {
@@ -162,7 +162,9 @@ export function CreateProjectModal({
 						<button
 							type="submit"
 							className="btn-submit"
-							disabled={isCreating || !newProjectName.trim() || !newProjectPath.trim()}
+							disabled={
+								isCreating || !newProjectName.trim() || !newProjectPath.trim()
+							}
 						>
 							{isCreating
 								? t('projectSelector.creating')

@@ -10,6 +10,7 @@ vi.mock('@core/persistence/DesktopBridge', () => ({
 
 vi.mock('@core/utils/mediaUtils', () => ({
 	getLocalMediaUrl: vi.fn((path: string) => path),
+	resolveMediaUrl: vi.fn(async (path: string) => path),
 	getBlobUrlForFile: vi.fn(async () => null),
 }));
 
@@ -203,5 +204,30 @@ describe('AudioPlayerStore (P6)', () => {
 		await audioPlayer.playTrack(trackC);
 		expect(audioPlayer.isTrackPlaying('shape-b')).toBe(false);
 		expect(audioPlayer.isTrackPlaying('shape-c')).toBe(true);
+	});
+
+	it('should return realtime frequency data from MixerEngine', () => {
+		const freqData = audioPlayer.getRealtimeFrequencyData('master');
+		expect(freqData).toBeDefined();
+		expect(freqData).toBeInstanceOf(Uint8Array);
+	});
+
+	it('should check if track is active regardless of play state', async () => {
+		const track: PlayingTrackData = {
+			id: 'track-active',
+			shapeId: 'shape-active',
+			title: 'Active Track',
+			imageUrl: '',
+			audioSource: 'song.mp3',
+			sourceType: 'local',
+			playMode: 'oneshot',
+		};
+
+		await audioPlayer.playTrack(track);
+		expect(audioPlayer.isTrackActive('shape-active')).toBe(true);
+
+		audioPlayer.togglePlayPause();
+		expect(audioPlayer.isTrackActive('shape-active')).toBe(true);
+		expect(audioPlayer.isTrackPlaying('shape-active')).toBe(false);
 	});
 });
