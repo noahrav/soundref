@@ -230,4 +230,35 @@ describe('AudioPlayerStore (P6)', () => {
 		expect(audioPlayer.isTrackActive('shape-active')).toBe(true);
 		expect(audioPlayer.isTrackPlaying('shape-active')).toBe(false);
 	});
+
+	it('should update duration on durationchange and loadedmetadata events', async () => {
+		const track: PlayingTrackData = {
+			id: 'track-dur',
+			shapeId: 'shape-dur',
+			title: 'Duration Track',
+			imageUrl: '',
+			audioSource: 'song.mp3',
+			sourceType: 'local',
+			playMode: 'oneshot',
+		};
+
+		await audioPlayer.playTrack(track);
+		const stateBefore = audioPlayer.getState();
+		expect(stateBefore.currentTrack?.id).toBe('track-dur');
+
+		// Access channel audioElement and trigger durationchange
+		const channel = (audioPlayer as any).channels.get('master');
+		expect(channel).toBeDefined();
+
+		Object.defineProperty(channel.audioElement, 'duration', {
+			value: 3600.5,
+			configurable: true,
+		});
+
+		channel.audioElement.dispatchEvent(new Event('durationchange'));
+		expect(audioPlayer.getState().duration).toBe(3600.5);
+
+		channel.audioElement.dispatchEvent(new Event('loadedmetadata'));
+		expect(audioPlayer.getState().duration).toBe(3600.5);
+	});
 });

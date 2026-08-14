@@ -16,6 +16,7 @@ vi.mock('@core/persistence/DesktopBridge', () => ({
 		readFileBinary: vi.fn(),
 		readFileSize: vi.fn(),
 		readFileBinaryChunk: vi.fn(),
+		getMediaServerPort: vi.fn(async () => 0),
 	},
 }));
 
@@ -131,6 +132,16 @@ describe('mediaUtils', () => {
 		it('should resolve to string via Promise', async () => {
 			const result = await resolveMediaUrl('/test/path');
 			expect(typeof result).toBe('string');
+		});
+
+		it('should use media server streaming URL when DesktopBridge.getMediaServerPort returns port', async () => {
+			vi.mocked(DesktopBridge.isTauri).mockReturnValue(true);
+			vi.spyOn(DesktopBridge, 'getMediaServerPort').mockResolvedValue(45678);
+
+			const result = await resolveMediaUrl('/home/user/song with spaces.mp3');
+			expect(result).toBe(
+				'http://127.0.0.1:45678/stream?path=%2Fhome%2Fuser%2Fsong%20with%20spaces.mp3',
+			);
 		});
 	});
 

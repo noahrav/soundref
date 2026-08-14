@@ -602,4 +602,81 @@ mod tests {
         assert!(response_str.contains("Content-Range: bytes 5-15/33"));
         assert!(response_str.contains("AUDIO_SAMPL"));
     }
+
+    #[test]
+    fn test_media_streaming_server_head_request() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("song.wav");
+        fs::write(&file_path, b"RIFF____WAVEfmt 1234567890data____PCM").unwrap();
+
+        let port = start_media_server();
+        let mut client = TcpStream::connect(format!("127.0.0.1:{}", port)).unwrap();
+        let req = format!(
+            "HEAD /stream?path={} HTTP/1.1\r\n\r\n",
+            file_path.to_string_lossy()
+        );
+        client.write_all(req.as_bytes()).unwrap();
+
+        let mut response = Vec::new();
+        client.read_to_end(&mut response).unwrap();
+
+        let response_str = String::from_utf8_lossy(&response);
+        assert!(response_str.starts_with("HTTP/1.1 200 OK"));
+        assert!(response_str.contains("Content-Type: audio/wav"));
+        assert!(response_str.contains("Accept-Ranges: bytes"));
+        assert!(response_str.contains("Access-Control-Allow-Origin: *"));
+        assert!(response_str.ends_with("\r\n\r\n"));
+    }
+
+    #[test]
+    fn test_media_streaming_server_options_request() {
+        let port = start_media_server();
+        let mut client = TcpStream::connect(format!("127.0.0.1:{}", port)).unwrap();
+        let req = "OPTIONS /stream?path=test.mp3 HTTP/1.1\r\n\r\n";
+        client.write_all(req.as_bytes()).unwrap();
+
+        let mut response = Vec::new();
+        client.read_to_end(&mut response).unwrap();
+
+        let response_str = String::from_utf8_lossy(&response);
+        assert!(response_str.starts_with("HTTP/1.1 204 No Content"));
+        assert!(response_str.contains("Access-Control-Allow-Methods: GET, HEAD, OPTIONS"));
+        assert!(response_str.contains("Access-Control-Allow-Headers: Range, Content-Type, Accept, Origin"));
+    }
+
+    #[test]
+    fn test_media_streaming_server_range_out_of_bounds() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("short.mp3");
+        fs::write(&file_path, b"12345").unwrap();
+
+        let port = start_media_server();
+        let mut client = TcpStream::connect(format!("127.0.0.1:{}", port)).unwrap();
+        let req = format!(
+            "GET /stream?path={} HTTP/1.1\r\nRange: bytes=50-100\r\n\r\n",
+            file_path.to_string_lossy()
+        );
+        client.write_all(req.as_bytes()).unwrap();
+
+        let mut response = Vec::new();
+        client.read_to_end(&mut response).unwrap();
+
+        let response_str = String::from_utf8_lossy(&response);
+        assert!(response_str.starts_with("HTTP/1.1 416 Range Not Satisfiable"));
+        assert!(response_str.contains("Content-Range: bytes */5"));
+    }
+
+    #[test]
+    fn test_percent_decode_and_mime_types() {
+        assert_eq!(percent_decode("My%20Track%20%231.mp3"), "My Track #1.mp3");
+        assert_eq!(percent_decode("%2Fhome%2Fuser%2Fsong.wav"), "/home/user/song.wav");
+
+        assert_eq!(get_mime_from_extension(Path::new("song.mp3")), "audio/mpeg");
+        assert_eq!(get_mime_from_extension(Path::new("song.wav")), "audio/wav");
+        assert_eq!(get_mime_from_extension(Path::new("song.flac")), "audio/flac");
+        assert_eq!(get_mime_from_extension(Path::new("song.ogg")), "audio/ogg");
+        assert_eq!(get_mime_from_extension(Path::new("song.m4a")), "audio/aac");
+        assert_eq!(get_mime_from_extension(Path::new("cover.png")), "image/png");
+        assert_eq!(get_mime_from_extension(Path::new("cover.webp")), "image/webp");
+    }
 }

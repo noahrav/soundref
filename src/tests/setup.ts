@@ -90,10 +90,12 @@ class MockAudio {
 		}
 	}
 
-	public dispatchEvent(event: string): void {
-		this.listeners[event]?.forEach((cb) => {
-			cb();
+	public dispatchEvent(event: string | { type: string }): boolean {
+		const type = typeof event === 'string' ? event : event.type;
+		this.listeners[type]?.forEach((cb) => {
+			cb(event);
 		});
+		return true;
 	}
 
 	public load(): void {}
