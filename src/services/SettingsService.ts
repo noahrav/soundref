@@ -13,10 +13,13 @@ export type AudioStorageMode = 'assets' | 'reference';
 export interface AppSettings {
 	/** How local audio files are stored in the project */
 	audioStorageMode: AudioStorageMode;
+	/** Whether to automatically clear memory caches when switching projects */
+	autoClearCacheOnProjectSwitch: boolean;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
 	audioStorageMode: 'assets',
+	autoClearCacheOnProjectSwitch: true,
 };
 
 /**
@@ -83,6 +86,23 @@ export class SettingsService {
 	 */
 	public setAudioStorageMode(mode: AudioStorageMode): void {
 		this.settings.audioStorageMode = mode;
+		this.saveSettings();
+	}
+
+	/**
+	 * Gets whether to automatically clear memory cache on project switch.
+	 * @returns boolean value.
+	 */
+	public getAutoClearCache(): boolean {
+		return this.settings.autoClearCacheOnProjectSwitch ?? true;
+	}
+
+	/**
+	 * Sets whether to automatically clear memory cache on project switch.
+	 * @param enabled New boolean value.
+	 */
+	public setAutoClearCache(enabled: boolean): void {
+		this.settings.autoClearCacheOnProjectSwitch = enabled;
 		this.saveSettings();
 	}
 

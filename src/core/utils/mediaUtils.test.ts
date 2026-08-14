@@ -2,6 +2,7 @@ import { DesktopBridge } from '@core/persistence/DesktopBridge';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	clearBlobUrlCache,
+	getBlobUrlCacheSize,
 	getBlobUrlForFile,
 	getLocalMediaUrl,
 	getMimeType,
@@ -13,6 +14,9 @@ vi.mock('@core/persistence/DesktopBridge', () => ({
 	DesktopBridge: {
 		isTauri: vi.fn(() => false),
 		readFileBinary: vi.fn(),
+		readFileSize: vi.fn(),
+		readFileBinaryChunk: vi.fn(),
+		getMediaServerPort: vi.fn(async () => 0),
 	},
 }));
 
@@ -129,6 +133,16 @@ describe('mediaUtils', () => {
 			const result = await resolveMediaUrl('/test/path');
 			expect(typeof result).toBe('string');
 		});
+
+		it('should use media server streaming URL when DesktopBridge.getMediaServerPort returns port', async () => {
+			vi.mocked(DesktopBridge.isTauri).mockReturnValue(true);
+			vi.spyOn(DesktopBridge, 'getMediaServerPort').mockResolvedValue(45678);
+
+			const result = await resolveMediaUrl('/home/user/song with spaces.mp3');
+			expect(result).toBe(
+				'http://127.0.0.1:45678/stream?path=%2Fhome%2Fuser%2Fsong%20with%20spaces.mp3',
+			);
+		});
 	});
 
 	describe('getBlobUrlForFile & blobUrlCache', () => {
@@ -156,6 +170,7 @@ describe('mediaUtils', () => {
 
 		it('should cache and revoke blob URLs', async () => {
 			vi.mocked(DesktopBridge.isTauri).mockReturnValue(true);
+			vi.mocked(DesktopBridge.readFileSize).mockResolvedValue(3);
 			vi.mocked(DesktopBridge.readFileBinary).mockResolvedValue(
 				new Uint8Array([1, 2, 3]).buffer as ArrayBuffer,
 			);
@@ -174,18 +189,23 @@ describe('mediaUtils', () => {
 			expect(globalThis.URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock');
 		});
 
-		it('clearBlobUrlCache should empty cache', async () => {
+		it('clearBlobUrlCache should empty cache and return count', async () => {
 			vi.mocked(DesktopBridge.isTauri).mockReturnValue(true);
+			vi.mocked(DesktopBridge.readFileSize).mockResolvedValue(3);
 			vi.mocked(DesktopBridge.readFileBinary).mockResolvedValue(
 				new Uint8Array([1, 2, 3]).buffer as ArrayBuffer,
 			);
 			globalThis.URL.createObjectURL = vi.fn(() => 'blob:mock');
 			globalThis.URL.revokeObjectURL = vi.fn();
 
+			expect(getBlobUrlCacheSize()).toBe(0);
 			await getBlobUrlForFile('/cache/file2.mp3');
 			expect(DesktopBridge.readFileBinary).toHaveBeenCalledTimes(1);
+			expect(getBlobUrlCacheSize()).toBe(1);
 
-			clearBlobUrlCache();
+			const count = clearBlobUrlCache();
+			expect(count).toBe(1);
+			expect(getBlobUrlCacheSize()).toBe(0);
 			expect(globalThis.URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock');
 
 			await getBlobUrlForFile('/cache/file2.mp3');

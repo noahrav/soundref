@@ -9,6 +9,7 @@ import {
 	faPowerOff,
 	faRotateLeft,
 	faRotateRight,
+	faTrashCan,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { ProjectService } from '@services/ProjectService';
@@ -27,6 +28,8 @@ interface PageTabsMenuProps {
 	onOpenCreateProjectModal?: () => void;
 	/** Callback function to open settings modal */
 	onOpenSettingsModal?: () => void;
+	/** Callback function invoked after deleting the current project from the list */
+	onDeleteCurrentProject?: () => void;
 }
 
 /**
@@ -38,6 +41,7 @@ export function PageTabsMenu({
 	onBackToProjects,
 	onOpenCreateProjectModal,
 	onOpenSettingsModal,
+	onDeleteCurrentProject,
 }: PageTabsMenuProps) {
 	const { t } = useTranslation();
 	const service = ProjectService.instance();
@@ -78,6 +82,27 @@ export function PageTabsMenu({
 		void DesktopBridge.exitApp();
 	}, []);
 
+	/**
+	 * Removes the current project from the known projects registry and returns to the project list.
+	 */
+	const handleDeleteCurrentProject = useCallback(async () => {
+		const activeProject = service.getActiveProject();
+		if (!activeProject) return;
+
+		if (
+			window.confirm(
+				t('projectSelector.deleteConfirm', { name: activeProject.name }),
+			)
+		) {
+			try {
+				await service.deleteProject(activeProject.id);
+				onDeleteCurrentProject?.();
+			} catch (err) {
+				console.error('[PageTabsMenu] Failed to delete current project:', err);
+			}
+		}
+	}, [service, t, onDeleteCurrentProject]);
+
 	return (
 		<div className="page-tabs__menu-dropdown">
 			<button
@@ -105,6 +130,20 @@ export function PageTabsMenu({
 				<span className="item-label">
 					<FontAwesomeIcon icon={faPlus} />
 					<span>{t('board.createNewProject')}</span>
+				</span>
+			</button>
+
+			<button
+				type="button"
+				className="page-tabs__menu-item page-tabs__menu-item--danger"
+				onClick={() => {
+					onClose();
+					void handleDeleteCurrentProject();
+				}}
+			>
+				<span className="item-label">
+					<FontAwesomeIcon icon={faTrashCan} />
+					<span>{t('board.deleteProject')}</span>
 				</span>
 			</button>
 

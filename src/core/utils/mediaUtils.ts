@@ -37,9 +37,21 @@ export function getMimeType(path: string): string {
 	}
 }
 
+let cachedMediaServerPort: number | null = null;
+
+if (typeof window !== 'undefined' && DesktopBridge.isTauri()) {
+	DesktopBridge.getMediaServerPort()
+		.then((port) => {
+			if (port > 0) {
+				cachedMediaServerPort = port;
+			}
+		})
+		.catch(() => {});
+}
+
 /**
  * Resolves a file system path or web URL into a browser loadable asset URL.
- * Automatically converts local Tauri desktop file paths using convertFileSrc.
+ * Automatically uses the embedded high-performance localhost streaming server in Tauri.
  * @param path Raw file system path or URL string.
  * @returns Resolved media URL string.
  */
@@ -70,6 +82,9 @@ export function getLocalMediaUrl(path: string | undefined | null): string {
 	}
 
 	if (DesktopBridge.isTauri()) {
+		if (cachedMediaServerPort && cachedMediaServerPort > 0) {
+			return `http://127.0.0.1:${cachedMediaServerPort}/stream?path=${encodeURIComponent(cleanPath)}`;
+		}
 		try {
 			return convertFileSrc(cleanPath);
 		} catch (err) {
@@ -90,10 +105,17 @@ export function getLocalMediaUrl(path: string | undefined | null): string {
  * @param path Raw media path or URL.
  * @returns Promise resolving to the usable URL string.
  */
-export function resolveMediaUrl(
+export async function resolveMediaUrl(
 	path: string | undefined | null,
 ): Promise<string> {
-	return Promise.resolve(getLocalMediaUrl(path));
+	if (!path) return '';
+	if (DesktopBridge.isTauri() && cachedMediaServerPort === null) {
+		try {
+			const port = await DesktopBridge.getMediaServerPort();
+			if (port > 0) cachedMediaServerPort = port;
+		} catch {}
+	}
+	return getLocalMediaUrl(path);
 }
 
 /**
@@ -108,8 +130,54 @@ export function useMediaUrl(url: string | undefined | null): string {
 const blobUrlCache = new Map<string, string>();
 
 /**
+ * Size threshold (in bytes) above which files are read in chunks
+ * to avoid Tauri IPC payload truncation. 20 MB.
+ */
+const CHUNKED_READ_THRESHOLD = 20 * 1024 * 1024;
+
+/**
+ * Size of each chunk when reading large files. 8 MB.
+ */
+const CHUNK_SIZE = 8 * 1024 * 1024;
+
+/**
+ * Reads a large file from disk in chunks via Tauri IPC, returning array of ArrayBuffers.
+ * Passing chunks directly to Blob avoids allocating large contiguous memory.
+ * @param cleanPath Absolute file system path.
+ * @param fileSize Total file size in bytes.
+ * @returns Promise resolving to ArrayBuffer chunks array or null on failure.
+ */
+async function readFileInChunks(
+	cleanPath: string,
+	fileSize: number,
+): Promise<ArrayBuffer[] | null> {
+	const chunks: ArrayBuffer[] = [];
+	let offset = 0;
+
+	while (offset < fileSize) {
+		const length = Math.min(CHUNK_SIZE, fileSize - offset);
+		const chunk = await DesktopBridge.readFileBinaryChunk(
+			cleanPath,
+			offset,
+			length,
+		);
+		if (!chunk || chunk.byteLength === 0) {
+			console.warn(
+				`[readFileInChunks] Failed to read chunk at offset=${offset} for ${cleanPath}`,
+			);
+			return null;
+		}
+		chunks.push(chunk);
+		offset += chunk.byteLength;
+	}
+
+	return chunks;
+}
+
+/**
  * Reads binary data for local desktop files and creates an in-memory Blob URL.
  * Useful for bypassing CORS or Tauri protocol restrictions for audio elements.
+ * For large files (>20 MB), reads in chunks to avoid IPC payload truncation.
  * @param path File system path string.
  * @returns Promise resolving to created Blob URL or null.
  */
@@ -147,13 +215,28 @@ export async function getBlobUrlForFile(
 
 	if (DesktopBridge.isTauri()) {
 		try {
-			const buffer = await DesktopBridge.readFileBinary(cleanPath);
-			if (buffer && buffer.byteLength > 0) {
-				const mime = getMimeType(cleanPath);
-				const blob = new Blob([buffer], { type: mime });
-				const blobUrl = URL.createObjectURL(blob);
-				blobUrlCache.set(cleanPath, blobUrl);
-				return blobUrl;
+			// Check file size to decide reading strategy
+			const fileSize = await DesktopBridge.readFileSize(cleanPath);
+			if (fileSize != null && fileSize > CHUNKED_READ_THRESHOLD) {
+				// Large file: read in chunks and construct Blob directly
+				const chunks = await readFileInChunks(cleanPath, fileSize);
+				if (chunks && chunks.length > 0) {
+					const mime = getMimeType(cleanPath);
+					const blob = new Blob(chunks, { type: mime });
+					const blobUrl = URL.createObjectURL(blob);
+					blobUrlCache.set(cleanPath, blobUrl);
+					return blobUrl;
+				}
+			} else {
+				// Small file: single read is fine
+				const buffer = await DesktopBridge.readFileBinary(cleanPath);
+				if (buffer && buffer.byteLength > 0) {
+					const mime = getMimeType(cleanPath);
+					const blob = new Blob([buffer], { type: mime });
+					const blobUrl = URL.createObjectURL(blob);
+					blobUrlCache.set(cleanPath, blobUrl);
+					return blobUrl;
+				}
 			}
 		} catch (err) {
 			console.warn('[getBlobUrlForFile] Failed to create blob URL:', err);
@@ -184,16 +267,27 @@ export function revokeBlobUrlForFile(path: string | undefined | null): void {
 }
 
 /**
+ * Returns the current number of cached Blob URLs.
+ * @returns Number of items currently in blobUrlCache.
+ */
+export function getBlobUrlCacheSize(): number {
+	return blobUrlCache.size;
+}
+
+/**
  * Revokes all cached Blob URLs and clears the blobUrlCache Map.
  * Prevents memory leaks when switching projects or unmounting boards.
+ * @returns Number of revoked Blob URLs.
  */
-export function clearBlobUrlCache(): void {
+export function clearBlobUrlCache(): number {
+	const count = blobUrlCache.size;
 	blobUrlCache.forEach((url) => {
 		if (url.startsWith('blob:')) {
 			URL.revokeObjectURL(url);
 		}
 	});
 	blobUrlCache.clear();
+	return count;
 }
 
 /**

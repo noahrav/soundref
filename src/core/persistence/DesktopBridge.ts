@@ -106,6 +106,59 @@ export class DesktopBridge {
 	}
 
 	/**
+	 * Returns the size in bytes of a file at the specified path.
+	 * @param path File system path.
+	 * @returns Promise resolving to file size or null on failure.
+	 */
+	public static async readFileSize(path: string): Promise<number | null> {
+		if (DesktopBridge.isTauri()) {
+			try {
+				const size = await invoke<number>('read_file_size', { path });
+				return size;
+			} catch (err) {
+				console.warn(
+					`[DesktopBridge] Failed to get file size for ${path}:`,
+					err,
+				);
+				return null;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Reads a chunk of binary data from a file at the specified offset.
+	 * Used for reading large files in pieces to avoid IPC payload size limits.
+	 * @param path File system path.
+	 * @param offset Byte offset to start reading from.
+	 * @param length Number of bytes to read.
+	 * @returns Promise resolving to ArrayBuffer or null on failure.
+	 */
+	public static async readFileBinaryChunk(
+		path: string,
+		offset: number,
+		length: number,
+	): Promise<ArrayBuffer | null> {
+		if (DesktopBridge.isTauri()) {
+			try {
+				const buffer = await invoke<ArrayBuffer>('read_file_binary_chunk', {
+					path,
+					offset,
+					length,
+				});
+				return buffer;
+			} catch (err) {
+				console.warn(
+					`[DesktopBridge] Failed to read binary chunk at ${path} offset=${offset}:`,
+					err,
+				);
+				return null;
+			}
+		}
+		return null;
+	}
+
+	/**
 	 * Reads text content from specified desktop file path.
 	 * @param path File system path.
 	 * @returns Promise resolving to text content string or null on failure.
@@ -224,6 +277,22 @@ export class DesktopBridge {
 	}
 
 	/**
+	 * Gets the user's home directory path from the native OS.
+	 * @returns Promise resolving to home directory path string or null.
+	 */
+	public static async getHomeDir(): Promise<string | null> {
+		if (DesktopBridge.isTauri()) {
+			try {
+				return await invoke<string>('get_home_dir');
+			} catch (err) {
+				console.error('[DesktopBridge] get_home_dir error:', err);
+				return null;
+			}
+		}
+		return null;
+	}
+
+	/**
 	 * Opens specified desktop folder in native file explorer.
 	 * @param path Directory path to open.
 	 */
@@ -270,6 +339,23 @@ export class DesktopBridge {
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * Returns the ephemeral TCP port of the embedded media streaming server in Rust.
+	 * @returns Port number or 0 if not available.
+	 */
+	public static async getMediaServerPort(): Promise<number> {
+		if (DesktopBridge.isTauri()) {
+			try {
+				const port = await invoke<number>('get_media_server_port');
+				return port || 0;
+			} catch (err) {
+				console.warn('[DesktopBridge] get_media_server_port error:', err);
+				return 0;
+			}
+		}
+		return 0;
 	}
 
 	/**

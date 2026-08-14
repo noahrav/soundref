@@ -23,7 +23,8 @@ import {
 	formatSoundrefJsonPath,
 	ProjectStorage,
 } from '@core/persistence/ProjectStorage';
-import { clearBlobUrlCache } from '@core/utils/mediaUtils';
+import { CacheService } from '@services/CacheService';
+import { SettingsService } from '@services/SettingsService';
 import i18n from '../i18n';
 
 /**
@@ -59,12 +60,16 @@ export class ProjectService {
 	}
 
 	/**
-	 * Clears the currently active project and revokes cached blob URLs.
+	 * Clears the currently active project and revokes cached blob URLs and waveforms.
 	 */
 	public closeActiveProject(): void {
 		this.activeProject = null;
 		CommandManager.instance().clear();
-		clearBlobUrlCache();
+		if (SettingsService.instance().getAutoClearCache()) {
+			void CacheService.instance().clearAll();
+		} else {
+			CacheService.instance().clearBlobUrls();
+		}
 	}
 
 	/**
@@ -86,7 +91,11 @@ export class ProjectService {
 			return this.activeProject;
 		}
 
-		clearBlobUrlCache();
+		if (SettingsService.instance().getAutoClearCache()) {
+			await CacheService.instance().clearAll();
+		} else {
+			CacheService.instance().clearBlobUrls();
+		}
 
 		const knownList = await ProjectStorage.getKnownProjects();
 		const meta = knownList.find((p) => p.id === projectId);

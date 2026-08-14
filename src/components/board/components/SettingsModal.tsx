@@ -3,18 +3,20 @@ import { TrackItem } from '@core/model/item/TrackItem';
 import { DesktopBridge } from '@core/persistence/DesktopBridge';
 import { ProjectStorage } from '@core/persistence/ProjectStorage';
 import {
+	faBroom,
 	faCheck,
 	faCog,
 	faSync,
 	faXmark,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CacheService, type CacheStats } from '@services/CacheService';
 import { ProjectService } from '@services/ProjectService';
 import {
 	type AudioStorageMode,
 	SettingsService,
 } from '@services/SettingsService';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import '@components/board/components/SettingsModal.scss';
 import '/node_modules/flag-icons/css/flag-icons.min.css';
@@ -34,16 +36,32 @@ interface SettingsModalProps {
 
 /**
  * Modal component for managing application settings.
- * Controls audio storage mode (assets folder vs embedded base64 vs reference link)
- * and allows converting existing project tracks to the selected mode.
+ * Controls audio storage mode, cache management and language preferences.
  */
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 	const { t, i18n } = useTranslation();
 	const [audioStorageMode, setAudioStorageMode] = useState<AudioStorageMode>(
 		() => SettingsService.instance().getAudioStorageMode(),
 	);
+	const [autoClearCache, setAutoClearCache] = useState<boolean>(() =>
+		SettingsService.instance().getAutoClearCache(),
+	);
+	const [cacheStats, setCacheStats] = useState<CacheStats>(() =>
+		CacheService.instance().getCacheStats(),
+	);
 	const [isConverting, setIsConverting] = useState(false);
 	const [statusMessage, setStatusMessage] = useState<string | null>(null);
+	const [isClearingCache, setIsClearingCache] = useState(false);
+	const [cacheStatusMessage, setCacheStatusMessage] = useState<string | null>(
+		null,
+	);
+
+	useEffect(() => {
+		if (isOpen) {
+			setCacheStats(CacheService.instance().getCacheStats());
+			setCacheStatusMessage(null);
+		}
+	}, [isOpen]);
 
 	const handleModeChange = (mode: AudioStorageMode) => {
 		setAudioStorageMode(mode);
@@ -159,6 +177,22 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 		setStatusMessage(t('settings.convertSuccess', { count }));
 	};
 
+	const handleClearCache = async () => {
+		setIsClearingCache(true);
+		setCacheStatusMessage(null);
+		const result = await CacheService.instance().clearAll();
+		setCacheStats(CacheService.instance().getCacheStats());
+		setIsClearingCache(false);
+		setCacheStatusMessage(
+			t('settings.clearCacheSuccess', { count: result.totalCleared }),
+		);
+	};
+
+	const handleAutoClearToggle = (enabled: boolean) => {
+		setAutoClearCache(enabled);
+		SettingsService.instance().setAutoClearCache(enabled);
+	};
+
 	if (!isOpen) return null;
 
 	return (
@@ -264,6 +298,68 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 							{statusMessage && (
 								<p className="settings-modal__status-msg">{statusMessage}</p>
 							)}
+						</div>
+					</div>
+
+					<div className="settings-modal__divider" />
+
+					<div className="settings-modal__section">
+						<h3 className="settings-modal__section-title">
+							{t('settings.cacheTitle')}
+						</h3>
+						<p className="settings-modal__section-desc">
+							{t('settings.cacheDesc')}
+						</p>
+
+						<div className="settings-modal__cache-box">
+							<div className="settings-modal__cache-info">
+								<span>
+									{cacheStats.total > 0
+										? t('settings.cacheStats', {
+												blobs: cacheStats.blobUrls,
+												waveforms: cacheStats.waveformPeaks,
+											})
+										: t('settings.cacheEmpty')}
+								</span>
+								<span
+									className={`settings-modal__cache-badge${cacheStats.total === 0 ? ' settings-modal__cache-badge--empty' : ''}`}
+								>
+									{cacheStats.total}
+								</span>
+							</div>
+
+							<button
+								type="button"
+								className="settings-modal__convert-btn"
+								disabled={isClearingCache || cacheStats.total === 0}
+								onClick={handleClearCache}
+							>
+								<FontAwesomeIcon icon={faBroom} spin={isClearingCache} />
+								<span>
+									{isClearingCache
+										? t('settings.clearingCache')
+										: t('settings.clearCacheBtn')}
+								</span>
+							</button>
+
+							{cacheStatusMessage && (
+								<p className="settings-modal__status-msg">
+									{cacheStatusMessage}
+								</p>
+							)}
+
+							<button
+								type="button"
+								className={`settings-modal__option${autoClearCache ? ' settings-modal__option--active' : ''}`}
+								onClick={() => handleAutoClearToggle(!autoClearCache)}
+							>
+								<span className="settings-modal__option-title">
+									{t('settings.autoClearCacheTitle')}
+								</span>
+								<span className="settings-modal__option-desc">
+									{t('settings.autoClearCacheDesc')}
+								</span>
+							</button>
 						</div>
 					</div>
 				</div>
